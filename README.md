@@ -16,7 +16,7 @@ POSIX systems such as xBSDs although we have not tested yet.
 
 ## macOS (Apple Silicon / Intel)
 
-libshogiはXcode Command Line Tools (Apple clang) を使って macOS
+libshogiはXcode Command Line Tools (Apple clang) を使ってmacOS
 でもビルドできます。まだインストールしていない場合は、先に
 インストールしてください。
 
@@ -31,9 +31,9 @@ libshogiはXcode Command Line Tools (Apple clang) を使って macOS
    $ sudo make install
 ```
 
-macOS では、ライブラリは `lib64/libshogi.so.0` ではなく
+macOSでは、ライブラリは `lib64/libshogi.so.0` ではなく
 `$(TARGET)/lib/libshogi.0.dylib` (およびシンボリックリンク
-`libshogi.dylib`) としてインストールされます。sudo を使わずに
+`libshogi.dylib`) としてインストールされます。sudoを使わずに
 インストールしたい場合は別のプレフィックスを指定し、サンプル
 プログラムのビルド時にも同じプレフィックスを渡してください。
 
@@ -44,10 +44,10 @@ macOS では、ライブラリは `lib64/libshogi.so.0` ではなく
 
 移植に関する補足:
 
-- x86 以外の CPU (Apple Silicon) では、ビット演算はコンパイラの
-  組み込み関数で実装され、PEXT はソフトウェアでエミュレートされ
-  ます。`BMI2 = y` は x86-64 でのみ有効です。
-- macOS には `pthread_spinlock_t` と名前なし POSIX セマフォが
+- x86以外のCPU (Apple Silicon) では、ビット演算はコンパイラの
+  組み込み関数で実装され、PEXTはソフトウェアでエミュレートされ
+  ます。`BMI2 = y` はx86-64でのみ有効です。
+- macOSには `pthread_spinlock_t` と名前なしPOSIXセマフォが
   ないため、`SpinLock` は `std::atomic_flag` を、`Semaphore` は
   `std::mutex`/`std::condition_variable` を使って実装しています。
   `LIBSHOGI_PORTABLE_SYNC` を定義すると、他の環境でも同じ実装を
