@@ -58,6 +58,20 @@
 
 #include <CSAConnection.h>
 
+/* ------------------------- platform compatibility ------------------------ */
+// macOS has neither MSG_NOSIGNAL nor SOL_TCP, and calls TCP_KEEPIDLE
+// TCP_KEEPALIVE. SIGPIPE is suppressed per socket with SO_NOSIGPIPE instead.
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+#ifndef SOL_TCP
+#define SOL_TCP IPPROTO_TCP
+#endif
+#if !defined(TCP_KEEPIDLE) && defined(TCP_KEEPALIVE)
+#define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
+/* ------------------------------------------------------------------------- */
+
 
 using namespace foundation;
 
@@ -114,6 +128,13 @@ static inline int _openSocket (int type = SOCK_STREAM)
         _GAME_CSACONNECTION_DEBUG_FUNCTION_RESULT("setsockopt()");
         throw CSAConnectionIOException();
     }
+#ifdef SO_NOSIGPIPE
+    optval = 1;
+    if(setsockopt(sfd, SOL_SOCKET, SO_NOSIGPIPE, &optval, optlen) < 0) {
+        _GAME_CSACONNECTION_DEBUG_FUNCTION_RESULT("setsockopt()");
+        throw CSAConnectionIOException();
+    }
+#endif
     optval = CSAConnection::KeepAliveInterval;
     if(setsockopt(sfd, SOL_TCP, TCP_KEEPIDLE, &optval, optlen) < 0) {
         _GAME_CSACONNECTION_DEBUG_FUNCTION_RESULT("setsockopt()");
@@ -207,7 +228,7 @@ static inline size_t _receive (std::string &var, int sfd)
     }
 
     // receive
-    rtn = recv(sfd, buffer, SizeOfBuffer, MSG_NOSIGNAL);
+    rtn = recv(sfd, buffer, SizeOfBuffer, 0);
     if (rtn == -1) {
         // IO error
         _GAME_CSACONNECTION_DEBUG_FUNCTION_RESULT("recv()");

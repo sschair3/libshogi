@@ -1,8 +1,15 @@
 
 TARGET  = /usr/local
 HEADDIR = $(TARGET)/include/shogi/
+ifeq ($(shell uname -s),Darwin)
+LIBRDIR = $(TARGET)/lib
+LIBNAME = libshogi.0.dylib
+LIBLINK = libshogi.dylib
+else
 LIBRDIR = $(TARGET)/lib64
 LIBNAME = libshogi.so.0
+LIBLINK = libshogi.so
+endif
 BMI2    = n
 TLS     = n
 
@@ -31,25 +38,25 @@ PRGRMS  = lib/shogi/Direction.cpp lib/shogi/Region.cpp lib/shogi/Square.cpp \
 all: lib/$(LIBNAME) tags 
 
 lib/$(LIBNAME): $(HEADERS) $(PRGRMS)
-	CFLAGS=$(CFLAGS) make -C lib
+	CFLAGS=$(CFLAGS) $(MAKE) -C lib LIBNAME=$(LIBNAME) INSTALLNAME=$(LIBRDIR)/$(LIBNAME)
 
 tags: $(HEADERS) $(PRGRMS)
-	ctags -R .
+	-ctags -R . 2>/dev/null || true
 
 install: lib/$(LIBNAME)
 	mkdir -p $(HEADDIR)
 	mkdir -p $(LIBRDIR)
 	install -m 644 $(HEADERS) $(HEADDIR)
 	install -m 755 lib/$(LIBNAME) $(LIBRDIR)
-	ln -fs $(LIBNAME) $(LIBRDIR)/libshogi.so
+	ln -fs $(LIBNAME) $(LIBRDIR)/$(LIBLINK)
 
 uninstall:
 	rm -rf $(HEADDIR)
 	rm -f  $(LIBRDIR)/$(LIBNAME)
-	rm -f  $(LIBRDIR)/libshogi.so
+	rm -f  $(LIBRDIR)/$(LIBLINK)
 
 clean:
-	make -C lib clean
-	make -C example clean
-	make -C regression clean
+	$(MAKE) -C lib clean LIBNAME=$(LIBNAME)
+	$(MAKE) -C example clean
+	$(MAKE) -C regression clean
 	rm -f tags

@@ -44,6 +44,14 @@
 
 #include <pthread.h>
 
+// macOS does not provide pthread_spinlock_t. Use a std::atomic_flag based
+// spin lock there (define LIBSHOGI_PORTABLE_SYNC to force it elsewhere).
+#if defined(__APPLE__) || defined(LIBSHOGI_PORTABLE_SYNC)
+#define _FOUNDATION_SPINLOCK_PORTABLE
+#include <atomic>
+#include <sched.h>
+#endif
+
 // begin namespace 'foundation'
 namespace foundation {
 
@@ -86,13 +94,19 @@ public:
     /// constructor
     SpinLockObject  ()
     {
+#ifdef _FOUNDATION_SPINLOCK_PORTABLE
+        _lock.clear();
+#else
         pthread_spin_init(&_lock, 0);
+#endif
     }
 
     /// destructor
     virtual ~SpinLockObject ()
     {
+#ifndef _FOUNDATION_SPINLOCK_PORTABLE
         pthread_spin_destroy(&_lock);
+#endif
     }
 
 private:
@@ -104,7 +118,11 @@ private:
     SpinLockObject &        operator= (const SpinLockObject &);
 
     /// lock variable
+#ifdef _FOUNDATION_SPINLOCK_PORTABLE
+    std::atomic_flag        _lock = ATOMIC_FLAG_INIT;
+#else
     pthread_spinlock_t      _lock;
+#endif
 
 };
 
@@ -119,24 +137,58 @@ class SpinLock
 
 public:
 
+#ifdef _FOUNDATION_SPINLOCK_PORTABLE
+    /// lock type
+    typedef std::atomic_flag    lock_type;
+
+    /// acquire
+    static void             acquire (lock_type *l)
+    {
+        while (l->test_and_set(std::memory_order_acquire)) {
+            sched_yield();
+        }
+    }
+
+    /// release
+    static void             release (lock_type *l)
+    {
+        l->clear(std::memory_order_release);
+    }
+#else
+    /// lock type
+    typedef pthread_spinlock_t  lock_type;
+
+    /// acquire
+    static void             acquire (lock_type *l)
+    {
+        pthread_spin_lock(l);
+    }
+
+    /// release
+    static void             release (lock_type *l)
+    {
+        pthread_spin_unlock(l);
+    }
+#endif
+
     /// constructor
     SpinLock (SpinLockObject &v)
     {
         _var = &(v._lock);
-        pthread_spin_lock(_var);
+        acquire(_var);
     }
 
     /// constructor
     SpinLock (SpinLockObject *v)
     {
         _var = &(v->_lock);
-        pthread_spin_lock(_var);
+        acquire(_var);
     }
 
     /// destructor 
     ~SpinLock ()
     {
-        pthread_spin_unlock(_var);
+        release(_var);
     }
 
 private:
@@ -151,7 +203,7 @@ private:
     SpinLock &              operator= (const SpinLock &);
 
     /// lock variable
-    pthread_spinlock_t *    _var;
+    lock_type *             _var;
 
 };
 

@@ -211,8 +211,8 @@ int main (void)
 
 /// Table contains direction delta to square2 from square1
 /// ADirectionTable[square1][square2]
-const Direction             ADirectionTable[Region::Regions]
-                                           [Region::Regions]
+const Direction             ADirectionTable[game::Region::Regions]
+                                           [game::Region::Regions]
             = {
                {
                  NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR,
@@ -1670,8 +1670,8 @@ const Direction             ADirectionTable[Region::Regions]
 
 /// Table contains direction to square2 distant from square1
 /// LDirectionTable[square1][square2]
-const Direction             LDirectionTable[Region::Regions]
-                                           [Region::Regions]
+const Direction             LDirectionTable[game::Region::Regions]
+                                           [game::Region::Regions]
             = {
                {
                  NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR, NOFDR,

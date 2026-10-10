@@ -76,6 +76,10 @@ namespace foundation { namespace Bitope {
 
 /* ----------------------------- bitoperations ----------------------------- */
 
+#if defined(__x86_64__) || defined(_M_X64)
+
+// x86-64 : original inline assembly implementation
+
 /**
  * Scan the given 32 bit value for LSB.
  * @param  v value to be scanned.
@@ -283,6 +287,109 @@ inline uint64_t pext (uint64_t v, uint64_t mask)
     return result;
 
 }
+#endif
+
+
+#else
+
+// Portable implementation (Apple Silicon / AArch64 and others) using
+// GCC/Clang builtins. Semantics are identical to the x86 version above:
+// the result is undefined when the scanned value is zero.
+
+/**
+ * Scan the given 32 bit value for LSB.
+ * @param  v value to be scanned.
+ * @return bit index.
+ */
+inline uint32_t bsf (uint32_t v)
+{
+    return static_cast<uint32_t>(__builtin_ctz(v));
+}
+
+/**
+ * Scan the given 64 bit value for LSB.
+ * @param  v value to be scanned.
+ * @return bit index.
+ */
+inline uint32_t bsf (uint64_t v)
+{
+    return static_cast<uint32_t>(__builtin_ctzll(v));
+}
+
+/**
+ * Scan the given 64 bit value for LSB and reset that bit
+ * @param  v value to be scanned.
+ * @return bit index.
+ */
+inline uint32_t bsfr (uint64_t &v)
+{
+    uint32_t result = static_cast<uint32_t>(__builtin_ctzll(v));
+    v &= v - 1;
+    return result;
+}
+
+/**
+ * Scan the given 32 bit value for MSB.
+ * @param  v value to be scanned.
+ * @return bit index.
+ */
+inline uint32_t bsr (uint32_t v)
+{
+    return static_cast<uint32_t>(31 - __builtin_clz(v));
+}
+
+/**
+ * Scan the given 64 bit value for MSB.
+ * @param  v value to be scanned.
+ * @return bit index.
+ */
+inline uint32_t bsr (uint64_t v)
+{
+    return static_cast<uint32_t>(63 - __builtin_clzll(v));
+}
+
+/**
+ * Scan the given 64 bit value for MSB and reset that bit
+ * @param  v value to be scanned.
+ * @return bit index.
+ */
+inline uint32_t bsrr (uint64_t &v)
+{
+    uint32_t result = static_cast<uint32_t>(63 - __builtin_clzll(v));
+    v &= ~(static_cast<uint64_t>(1) << result);
+    return result;
+}
+
+/**
+ * POPCNT - count bits set in 128 bits data
+ * @param  p1 
+ * @param  p2 
+ * @return number of 1-bits in p1 and p2
+ */
+inline uint32_t popcnt (uint64_t p1, uint64_t p2)
+{
+    return static_cast<uint32_t>(__builtin_popcountll(p1) +
+                                 __builtin_popcountll(p2));
+}
+
+/**
+ * PEXT - parallel bits extract for 64 bit value (software emulation).
+ * @param  v    a value to be examined
+ * @param  mask indicates which bits to be packed
+ * @return packed bits.
+ */
+inline uint64_t pext (uint64_t v, uint64_t mask)
+{
+    uint64_t result = 0;
+    for (uint64_t bit = 1; mask; bit <<= 1) {
+        if (v & mask & (0 - mask)) {
+            result |= bit;
+        }
+        mask &= mask - 1;
+    }
+    return result;
+}
+
 #endif
 
 /* ------------------------------------------------------------------------- */

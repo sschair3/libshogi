@@ -1,10 +1,34 @@
 
-INCDIR  = /usr/local/include/shogi
+PREFIX  = /usr/local
+INCDIR  = $(PREFIX)/include/shogi
+ifeq ($(shell uname -s),Darwin)
+LIBDIR  = $(PREFIX)/lib
+else
+LIBDIR  = $(PREFIX)/lib64
+endif
 
 DEBUG   = n
 MCHCK   = n
 BMI2    = $(strip $(shell grep ^BMI2 ../Makefile | cut -d= -f 2))
 TLS     = $(strip $(shell grep ^TLS  ../Makefile | cut -d= -f 2))
+
+
+# ----------------------------------------------------------------------------
+# platform detection (Linux / macOS)
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_S),Darwin)
+RTLIB     =
+ifeq ($(UNAME_M),x86_64)
+ARCHFLAGS = -mtune=native
+else
+ARCHFLAGS =
+endif
+else
+RTLIB     = -lrt
+ARCHFLAGS = -mtune=native
+endif
+# ----------------------------------------------------------------------------
 
 CC      = g++
 
@@ -21,35 +45,35 @@ ifeq ($(MCHCK),y)
 CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion \
           -Wfloat-equal -Wpointer-arith -Wswitch-enum \
-          -O0 -g -mtune=native -ftrapv -fthreadsafe-statics \
+          -O0 -g $(ARCHFLAGS) -ftrapv -fthreadsafe-statics \
           -fsanitize=address \
 		  -I$(INCDIR) -I./lesserpyon -D_GCC_
-LFLAGS  =  -pthread -lrt -lshogi
+LFLAGS  =  -pthread $(RTLIB) -L$(LIBDIR) -lshogi
 else
 CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion \
           -Wfloat-equal -Wpointer-arith -Wswitch-enum \
-          -O0 -g -mtune=native -fthreadsafe-statics \
+          -O0 -g $(ARCHFLAGS) -fthreadsafe-statics \
 		  -I$(INCDIR) -I./lesserpyon -D_GCC_
-LFLAGS  = -pthread -lrt -lshogi
+LFLAGS  = -pthread $(RTLIB) -L$(LIBDIR) -lshogi
 endif
 else
 ifeq ($(MCHCK),y)
 CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion \
           -Wfloat-equal -Wpointer-arith -Wswitch-enum \
-		  -O3 -g -mtune=native -funroll-loops \
+		  -O3 -g $(ARCHFLAGS) -funroll-loops \
           -fthreadsafe-statics -ftrapv -fsanitize=address \
 		  -I$(INCDIR) -I./lesserpyon -D_GCC_
-LFLAGS  = -pthread -lrt -lshogi
+LFLAGS  = -pthread $(RTLIB) -L$(LIBDIR) -lshogi
 else
 CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion \
           -Wfloat-equal -Wpointer-arith -Wswitch-enum \
-		  -O3 -g -mtune=native -funroll-loops \
+		  -O3 -g $(ARCHFLAGS) -funroll-loops \
           -fthreadsafe-statics \
 		  -I$(INCDIR) -I./lesserpyon -D_GCC_
-LFLAGS  = -lpthread -lrt -lshogi
+LFLAGS  = -lpthread $(RTLIB) -L$(LIBDIR) -lshogi
 endif
 endif
 

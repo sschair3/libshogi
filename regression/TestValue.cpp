@@ -38,10 +38,10 @@ int main (int argc, char *argv[])
             }
             p.move(m);
             int exchange = 0;
-            for (auto sq : Square::all)   {
+            for (auto sq : game::Square::all)   {
                 exchange  += Evaluation::Value[p.square(sq)];
             }
-            for (auto pc : Piece::hand)   {
+            for (auto pc : game::Piece::hand)   {
                 // for black's hands
                 int bhand  = p.hand(Color::Black, pc);
                 exchange  += Evaluation::Hands[bhand][pc];

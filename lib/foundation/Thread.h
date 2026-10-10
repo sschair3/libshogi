@@ -42,8 +42,8 @@
 #ifndef _FOUNDATION_THREAD_H
 #define _FOUNDATION_THREAD_H
 
-#include <semaphore.h>
 #include <pthread.h>
+#include <sched.h>
 
 #include <SpinLock.h>
 #include <Semaphore.h>
@@ -139,7 +139,7 @@ private:
         Thread<T,V> *           reference;
         T *                     retval;
         V                       argument;
-        sem_t *                 sync;
+        Semaphore *             sync;
     };
 
     /// void copy constructor
@@ -152,7 +152,7 @@ private:
     pthread_t                   _th;
 
     /// semaphore for terminal sync
-    sem_t                       _sync;
+    Semaphore                   _sync;
 
     /// variable to hold thread argument
     V                           _arg;
@@ -185,8 +185,7 @@ Thread<T,V>::Thread ()
  : _state(INITIALIZED)
 {
 
-    // initialize sync semaphore
-    sem_init(&_sync, 0, 0);
+    // sync semaphore is initialized to 0 by its constructor
 
 }
 
@@ -201,7 +200,6 @@ Thread<T,V>::~Thread ()
         if (_state != CLEARED && _state != INITIALIZED) {
             pthread_join(_th, NULL);
         }
-        sem_destroy(&_sync);
 }
 
 
@@ -252,7 +250,7 @@ void Thread<T,V>::sync (void)
     SpinLock    lock(this);
 
     // wait
-    sem_wait(&_sync);
+    _sync.wait();
 
     // join
     pthread_join(_th, NULL);
@@ -280,8 +278,7 @@ bool Thread<T,V>::trysync (void)
     SpinLock    lock(this);
 
     // try wait
-    int rtn = sem_trywait(&_sync);
-    if (rtn != 0 && errno == EAGAIN) {
+    if (! _sync.check()) {
         return false;
     }
 
@@ -356,7 +353,7 @@ void * Thread<T,V>::_run (void *data)
     *(thdat->retval) = thdat->reference->_thread(thdat->argument);
 
     // sync 
-    sem_post(thdat->sync);
+    thdat->sync->post();
 
     // global sync
     globalSync.post();

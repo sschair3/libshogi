@@ -44,7 +44,7 @@ int main (int argc, char *argv[])
             // check out situation
             auto guard  = p.turn();
             auto attack = Color::flip(guard);
-            auto ou     = p.bitboard(Piece::polar(OU, guard));
+            auto ou     = p.bitboard(game::Piece::polar(OU, guard));
             auto ousq   = ou.lsb();
             auto pin    = (~ p.pin());
 
@@ -55,7 +55,7 @@ int main (int argc, char *argv[])
                 auto dr = distantDirection(ousq, sq);
 
                 // direction to the pinned piece from ou
-                if (dr == Square::NOFDR) {
+                if (dr == game::Square::NOFDR) {
                     std::cout << l       << std::endl
                               << p.pin() << std::endl
                               << p       << std::endl;
@@ -63,22 +63,22 @@ int main (int argc, char *argv[])
                 }
 
                 // check out the attacking piece
-                Piece::Piece pc;
+                game::Piece::Piece pc;
                 do {
                     sq += dr;
                     pc  = p.square(sq);
-                } while (pc == Piece::EMP);
+                } while (pc == game::Piece::EMP);
 
                 // effect without pinned piece
-                pc &= Piece::Mask;
+                pc &= game::Piece::Mask;
                 Bitboard ef;
-                if (pc == Piece::KY) {
+                if (pc == game::Piece::KY) {
                     ef = Effect::KY(attack, sq, oc);
                 } else
-                if (pc == Piece::KA) {
+                if (pc == game::Piece::KA) {
                     ef = Effect::KA(sq, oc);
                 } else
-                if (pc == Piece::HI) {
+                if (pc == game::Piece::HI) {
                     ef = Effect::HI(sq, oc);
                 } else {
                     std::cout << l       << std::endl

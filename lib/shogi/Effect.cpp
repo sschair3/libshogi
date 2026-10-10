@@ -1010,40 +1010,40 @@ static void _initADEffect (void)
         for (auto sq : Square::all) {
 
             // FU
-            _ADEffectT[sq][polar(Piece::FU, c)] = KY(c, sq, Bitboard::Fill);
+            _ADEffectT[sq][polar(game::Piece::FU, c)] = KY(c, sq, Bitboard::Fill);
 
             // KY has none of adjacent effect but long-distance effect
-            _ADEffectT[sq][polar(Piece::KY, c)] = Bitboard::Zero;
+            _ADEffectT[sq][polar(game::Piece::KY, c)] = Bitboard::Zero;
 
             // KE 
-            _ADEffectT[sq][polar(Piece::KE, c)] = _KEEffectCalc(c, sq);
+            _ADEffectT[sq][polar(game::Piece::KE, c)] = _KEEffectCalc(c, sq);
 
             // GI
-            _ADEffectT[sq][polar(Piece::GI, c)] = KY(c, sq, Bitboard::Fill) |
+            _ADEffectT[sq][polar(game::Piece::GI, c)] = KY(c, sq, Bitboard::Fill) |
                                                   KA(   sq, Bitboard::Fill)   ;
 
             // KI, TO, NY, NK, NG
-            _ADEffectT[sq][polar(Piece::KI, c)] = _KIEffectCalc(c, sq);
-            _ADEffectT[sq][polar(Piece::TO, c)] = _KIEffectCalc(c, sq);
-            _ADEffectT[sq][polar(Piece::NY, c)] = _KIEffectCalc(c, sq);
-            _ADEffectT[sq][polar(Piece::NK, c)] = _KIEffectCalc(c, sq);
-            _ADEffectT[sq][polar(Piece::NG, c)] = _KIEffectCalc(c, sq);
+            _ADEffectT[sq][polar(game::Piece::KI, c)] = _KIEffectCalc(c, sq);
+            _ADEffectT[sq][polar(game::Piece::TO, c)] = _KIEffectCalc(c, sq);
+            _ADEffectT[sq][polar(game::Piece::NY, c)] = _KIEffectCalc(c, sq);
+            _ADEffectT[sq][polar(game::Piece::NK, c)] = _KIEffectCalc(c, sq);
+            _ADEffectT[sq][polar(game::Piece::NG, c)] = _KIEffectCalc(c, sq);
 
             // KA has none of adjacent effect but long-distance effect
-            _ADEffectT[sq][polar(Piece::KA, c)] = Bitboard::Zero;
+            _ADEffectT[sq][polar(game::Piece::KA, c)] = Bitboard::Zero;
 
             // HI has none of adjacent effect but long-distance effect
-            _ADEffectT[sq][polar(Piece::HI, c)] = Bitboard::Zero;
+            _ADEffectT[sq][polar(game::Piece::HI, c)] = Bitboard::Zero;
 
             // OU
-            _ADEffectT[sq][polar(Piece::OU, c)] = HI(sq, Bitboard::Fill) |
+            _ADEffectT[sq][polar(game::Piece::OU, c)] = HI(sq, Bitboard::Fill) |
                                                   KA(sq, Bitboard::Fill)   ;
 
             // UM
-            _ADEffectT[sq][polar(Piece::UM, c)] = HI(sq, Bitboard::Fill);
+            _ADEffectT[sq][polar(game::Piece::UM, c)] = HI(sq, Bitboard::Fill);
 
             // RY
-            _ADEffectT[sq][polar(Piece::RY, c)] = KA(sq, Bitboard::Fill);
+            _ADEffectT[sq][polar(game::Piece::RY, c)] = KA(sq, Bitboard::Fill);
         }
     }
 

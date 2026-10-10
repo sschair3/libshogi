@@ -42,7 +42,18 @@
 #ifndef _FOUNDATION_SEMAPHORE_H
 #define _FOUNDATION_SEMAPHORE_H
 
+#include <cerrno>
+
+// macOS does not support unnamed POSIX semaphores (sem_init() fails with
+// ENOSYS). Use a mutex / condition variable implementation there (define
+// LIBSHOGI_PORTABLE_SYNC to force it elsewhere).
+#if defined(__APPLE__) || defined(LIBSHOGI_PORTABLE_SYNC)
+#define _FOUNDATION_SEMAPHORE_PORTABLE
+#include <mutex>
+#include <condition_variable>
+#else
 #include <semaphore.h>
+#endif
 
 // begin namespace 'foundation'
 namespace foundation {
@@ -79,6 +90,66 @@ class Semaphore;
 class Semaphore {
 
 public:
+
+#ifdef _FOUNDATION_SEMAPHORE_PORTABLE
+
+    /// constructor
+    Semaphore  () : _count(0) {}
+
+    /// constructor
+    Semaphore  (unsigned int val) : _count(val) {}
+
+    /// destructor
+    virtual ~Semaphore () {}
+
+    /// wait
+    void                    wait (void)
+    {
+        std::unique_lock<std::mutex> lock(_mutex);
+        _cond.wait(lock, [this]{ return _count > 0; });
+        --_count;
+    }
+
+    /// trywait
+    bool                    check (void)
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (_count > 0) {
+            --_count;
+            return true;
+        }
+        errno = EAGAIN;
+        return false;
+    }
+
+    /// post
+    void                    post (void)
+    {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            ++_count;
+        }
+        _cond.notify_one();
+    }
+
+private:
+
+    /// void copy constructor
+    Semaphore (const Semaphore &);
+
+    /// void copy operator
+    Semaphore &             operator= (const Semaphore &);
+
+    /// mutex
+    std::mutex              _mutex;
+
+    /// condition variable
+    std::condition_variable _cond;
+
+    /// counter
+    unsigned int            _count;
+
+#else
 
     /// constructor
     Semaphore  ()
@@ -133,6 +204,8 @@ private:
 
     /// semaphore
     sem_t      _sem;
+
+#endif
 
 };
 

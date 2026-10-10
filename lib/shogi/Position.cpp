@@ -545,18 +545,18 @@ void Position::init (void)
     // make position 
     for (auto s : Square::all) {
         auto p     = h[s];
-        auto c     = Piece::color(p);
+        auto c     = game::Piece::color(p);
         _board[s]  = p;
         _bbord[p] ^= Bitboard::Square[s];
-        _piece[c] ^= (p != Piece::EMP ? Bitboard::Square[s] : Bitboard::Zero);
+        _piece[c] ^= (p != game::Piece::EMP ? Bitboard::Square[s] : Bitboard::Zero);
         _exchg    += _pieceVal[p];
     }
 
     // occupied bitboard
-    _ocupd  = ~_bbord[Piece::EMP];
+    _ocupd  = ~_bbord[game::Piece::EMP];
 
     // empty bitboard
-    _empty  =  _bbord[Piece::EMP];
+    _empty  =  _bbord[game::Piece::EMP];
 
     // square of OU
     _kingSB = Square::SQ59;
@@ -4630,10 +4630,10 @@ int Position::_numPinB (void)
         case BFU: case BKY: case BKE:
             break;
         case BGI:
-            num += (Effect::AD(sq, Piece::BGI) & mk).popcnt();
+            num += (Effect::AD(sq, game::Piece::BGI) & mk).popcnt();
             break;
         case BKI: case BTO: case BNY: case BNK: case BNG:
-            num += (Effect::AD(sq, Piece::BKI) & mk).popcnt();
+            num += (Effect::AD(sq, game::Piece::BKI) & mk).popcnt();
             break;
         case BUM:
             num += ((Effect::OC(sq) | Effect::KA(sq, _ocupd)) & mk).popcnt();
@@ -4686,10 +4686,10 @@ int Position::_numPinW (void)
         case WFU: case WKY: case WKE:
             break;
         case WGI:
-            num += (Effect::AD(sq, Piece::WGI) & mk).popcnt();
+            num += (Effect::AD(sq, game::Piece::WGI) & mk).popcnt();
             break;
         case WKI: case WTO: case WNY: case WNK: case WNG:
-            num += (Effect::AD(sq, Piece::WKI) & mk).popcnt();
+            num += (Effect::AD(sq, game::Piece::WKI) & mk).popcnt();
             break;
         case WUM:
             num += ((Effect::OC(sq) | Effect::KA(sq, _ocupd)) & mk).popcnt();
@@ -4899,7 +4899,7 @@ void Position::_chckPinB (Array<Move::Move, Move::Max> &m)
             _chckBGI(Bitboard::Square[sq], mk, m);
             break;
         case BKI: case BTO: case BNY: case BNK: case BNG:
-            mk &= Effect::AD(_kingSW, Piece::WKI);
+            mk &= Effect::AD(_kingSW, game::Piece::WKI);
             _moveBKI(mk, sq, m);
             break;
         case BUM:
@@ -4948,7 +4948,7 @@ void Position::_chckPinW (Array<Move::Move, Move::Max> &m)
             _chckWGI(Bitboard::Square[sq], mk, m);
             break;
         case WKI: case WTO: case WNY: case WNK: case WNG:
-            mk &= Effect::AD(_kingSB, Piece::BKI);
+            mk &= Effect::AD(_kingSB, game::Piece::BKI);
             _moveWKI(mk, sq, m);
             break;
         case WUM:
@@ -6317,13 +6317,13 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BFUMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (BlackCanPromote[to]) {
                     _m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
@@ -6337,13 +6337,13 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BFUMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (BlackCanPromote[to]) {
                      m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
@@ -6357,17 +6357,17 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BKEMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (BlackCanPromote[to]) {
                      m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::AD(to, Piece::BKE) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKE) & _bbord[game::Piece::WOU])) {
                         m.add(Move::move(from, to)); 
                     }
                 }
@@ -6379,14 +6379,14 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BlackCanPromote[from] || BlackCanPromote[to]) {
-                    if (! (Effect::AD(to, Piece::BGI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BGI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::move   (from, to)); 
                     }
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::AD(to, Piece::BGI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BGI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6397,7 +6397,7 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
         { auto ef = Effect::AD(from, BKI) & mask;
             while (ef) {
                 auto to = ef.pick();
-                if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6408,7 +6408,7 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (! ((Effect::OC(to) | Effect::KA(to, _ocupd))
-                                                            & _bbord[Piece::WOU])) {
+                                                            & _bbord[game::Piece::WOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6419,7 +6419,7 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (! ((Effect::OC(to) | Effect::HI(to, _ocupd))
-                                           & _bbord[Piece::WOU])) {
+                                           & _bbord[game::Piece::WOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6430,15 +6430,15 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BlackCanPromote[from] || BlackCanPromote[to]) {
-                    if (! (Effect::KA(to, _ocupd) & _bbord[Piece::WOU])) {
+                    if (! (Effect::KA(to, _ocupd) & _bbord[game::Piece::WOU])) {
                         _m.add(Move::move   (from, to)); 
                     }
                     if (! ((Effect::OC(to) | Effect::KA(to, _ocupd))
-                                                & _bbord[Piece::WOU])) {
+                                                & _bbord[game::Piece::WOU])) {
                          m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::KA(to, _ocupd) & _bbord[Piece::WOU])) {
+                    if (! (Effect::KA(to, _ocupd) & _bbord[game::Piece::WOU])) {
                          m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6450,15 +6450,15 @@ void Position::_chckFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BlackCanPromote[from] || BlackCanPromote[to]) {
-                    if (! (Effect::HI(to, _ocupd) & _bbord[Piece::WOU])) {
+                    if (! (Effect::HI(to, _ocupd) & _bbord[game::Piece::WOU])) {
                         _m.add(Move::move   (from, to)); 
                     }
                     if (! ((Effect::OC(to) | Effect::HI(to, _ocupd))
-                                                & _bbord[Piece::WOU])) {
+                                                & _bbord[game::Piece::WOU])) {
                          m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::HI(to, _ocupd) & _bbord[Piece::WOU])) {
+                    if (! (Effect::HI(to, _ocupd) & _bbord[game::Piece::WOU])) {
                          m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6494,7 +6494,7 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BlackCanPromote[to]) {
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
@@ -6508,13 +6508,13 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BFUMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (BlackCanPromote[to]) {
                      m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
@@ -6528,17 +6528,17 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BKEMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (BlackCanPromote[to]) {
                      m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::AD(to, Piece::BKE) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKE) & _bbord[game::Piece::WOU])) {
                         m.add(Move::move(from, to)); 
                     }
                 }
@@ -6550,14 +6550,14 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (BlackCanPromote[from] || BlackCanPromote[to]) {
-                    if (! (Effect::AD(to, Piece::BGI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BGI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::move   (from, to)); 
                     }
-                    if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::AD(to, Piece::BGI) & _bbord[Piece::WOU])) {
+                    if (! (Effect::AD(to, game::Piece::BGI) & _bbord[game::Piece::WOU])) {
                         m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6568,7 +6568,7 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
         { auto ef = Effect::AD(from, BKI) & mask;
             while (ef) {
                 auto to = ef.pick();
-                if (! (Effect::AD(to, Piece::BKI) & _bbord[Piece::WOU])) {
+                if (! (Effect::AD(to, game::Piece::BKI) & _bbord[game::Piece::WOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6579,7 +6579,7 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (! ((Effect::OC(to) | Effect::KA(to, _ocupd))
-                                                            & _bbord[Piece::WOU])) {
+                                                            & _bbord[game::Piece::WOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6590,7 +6590,7 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (! ((Effect::OC(to) | Effect::HI(to, _ocupd))
-                                           & _bbord[Piece::WOU])) {
+                                           & _bbord[game::Piece::WOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6602,11 +6602,11 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
                 auto to = ef.pick();
                 if (BlackCanPromote[from] || BlackCanPromote[to]) {
                     if (! ((Effect::OC(to) | Effect::KA(to, _ocupd))
-                                                  & _bbord[Piece::WOU])) {
+                                                  & _bbord[game::Piece::WOU])) {
                          m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::KA(to, _ocupd) & _bbord[Piece::WOU])) {
+                    if (! (Effect::KA(to, _ocupd) & _bbord[game::Piece::WOU])) {
                          m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6619,11 +6619,11 @@ void Position::_cfstFromB (const Bitboard &mask, Square::Square from,
                 auto to = ef.pick();
                 if (BlackCanPromote[from] || BlackCanPromote[to]) {
                     if (! ((Effect::OC(to) | Effect::HI(to, _ocupd))
-                                                  & _bbord[Piece::WOU])) {
+                                                  & _bbord[game::Piece::WOU])) {
                          m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::HI(to, _ocupd) & _bbord[Piece::WOU])) {
+                    if (! (Effect::HI(to, _ocupd) & _bbord[game::Piece::WOU])) {
                          m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6658,13 +6658,13 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WFUMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (WhiteCanPromote[to]) {
                     _m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
@@ -6678,13 +6678,13 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WFUMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (WhiteCanPromote[to]) {
                      m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
@@ -6698,17 +6698,17 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WKEMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (WhiteCanPromote[to]) {
                      m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::AD(to, Piece::WKE) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKE) & _bbord[game::Piece::BOU])) {
                         m.add(Move::move(from, to)); 
                     }
                 }
@@ -6720,14 +6720,14 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WhiteCanPromote[from] || WhiteCanPromote[to]) {
-                    if (! (Effect::AD(to, Piece::WGI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WGI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::move   (from, to)); 
                     }
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::AD(to, Piece::WGI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WGI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6738,7 +6738,7 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
         { auto ef = Effect::AD(from, WKI) & mask;
             while (ef) {
                 auto to = ef.pick();
-                if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6749,7 +6749,7 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (! ((Effect::OC(to) | Effect::KA(to, _ocupd))
-                                            & _bbord[Piece::BOU])) {
+                                            & _bbord[game::Piece::BOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6760,7 +6760,7 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (! ((Effect::OC(to) | Effect::HI(to, _ocupd))
-                                            & _bbord[Piece::BOU])) {
+                                            & _bbord[game::Piece::BOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6771,15 +6771,15 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WhiteCanPromote[from] || WhiteCanPromote[to]) {
-                    if (! (Effect::KA(to, _ocupd) & _bbord[Piece::BOU])) {
+                    if (! (Effect::KA(to, _ocupd) & _bbord[game::Piece::BOU])) {
                         _m.add(Move::move   (from, to)); 
                     }
                     if (! ((Effect::OC(to) | Effect::KA(to, _ocupd))
-                                                  & _bbord[Piece::BOU])) {
+                                                  & _bbord[game::Piece::BOU])) {
                          m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::KA(to, _ocupd) & _bbord[Piece::BOU])) {
+                    if (! (Effect::KA(to, _ocupd) & _bbord[game::Piece::BOU])) {
                          m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6791,15 +6791,15 @@ void Position::_chckFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WhiteCanPromote[from] || WhiteCanPromote[to]) {
-                    if (! (Effect::HI(to, _ocupd) & _bbord[Piece::BOU])) {
+                    if (! (Effect::HI(to, _ocupd) & _bbord[game::Piece::BOU])) {
                         _m.add(Move::move   (from, to)); 
                     }
                     if (! ((Effect::OC(to) | Effect::HI(to, _ocupd))
-                                                  & _bbord[Piece::BOU])) {
+                                                  & _bbord[game::Piece::BOU])) {
                          m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::HI(to, _ocupd) & _bbord[Piece::BOU])) {
+                    if (! (Effect::HI(to, _ocupd) & _bbord[game::Piece::BOU])) {
                          m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6834,7 +6834,7 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WhiteCanPromote[to]) {
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
@@ -6848,13 +6848,13 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WFUMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (WhiteCanPromote[to]) {
                      m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
@@ -6868,17 +6868,17 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WKEMPromote[to]) {
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else
                 if (WhiteCanPromote[to]) {
                      m.add(Move::move(from, to)); 
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::AD(to, Piece::WKE) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKE) & _bbord[game::Piece::BOU])) {
                         m.add(Move::move(from, to)); 
                     }
                 }
@@ -6890,14 +6890,14 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (WhiteCanPromote[from] || WhiteCanPromote[to]) {
-                    if (! (Effect::AD(to, Piece::WGI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WGI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::move   (from, to)); 
                     }
-                    if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::AD(to, Piece::WGI) & _bbord[Piece::BOU])) {
+                    if (! (Effect::AD(to, game::Piece::WGI) & _bbord[game::Piece::BOU])) {
                         m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6908,7 +6908,7 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
         { auto ef = Effect::AD(from, WKI) & mask;
             while (ef) {
                 auto to = ef.pick();
-                if (! (Effect::AD(to, Piece::WKI) & _bbord[Piece::BOU])) {
+                if (! (Effect::AD(to, game::Piece::WKI) & _bbord[game::Piece::BOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6919,7 +6919,7 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (! ((Effect::OC(to) | Effect::KA(to, _ocupd))
-                                            & _bbord[Piece::BOU])) {
+                                            & _bbord[game::Piece::BOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6930,7 +6930,7 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
             while (ef) {
                 auto to = ef.pick();
                 if (! ((Effect::OC(to) | Effect::HI(to, _ocupd))
-                                            & _bbord[Piece::BOU])) {
+                                            & _bbord[game::Piece::BOU])) {
                     m.add(Move::move(from, to)); 
                 }
             }
@@ -6942,11 +6942,11 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
                 auto to = ef.pick();
                 if (WhiteCanPromote[from] || WhiteCanPromote[to]) {
                     if (! ((Effect::OC(to) | Effect::KA(to, _ocupd))
-                                                  & _bbord[Piece::BOU])) {
+                                                  & _bbord[game::Piece::BOU])) {
                          m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::KA(to, _ocupd) & _bbord[Piece::BOU])) {
+                    if (! (Effect::KA(to, _ocupd) & _bbord[game::Piece::BOU])) {
                          m.add(Move::move   (from, to)); 
                     }
                 }
@@ -6959,11 +6959,11 @@ void Position::_cfstFromW (const Bitboard &mask, Square::Square from,
                 auto to = ef.pick();
                 if (WhiteCanPromote[from] || WhiteCanPromote[to]) {
                     if (! ((Effect::OC(to) | Effect::HI(to, _ocupd))
-                                                  & _bbord[Piece::BOU])) {
+                                                  & _bbord[game::Piece::BOU])) {
                          m.add(Move::promote(from, to)); 
                     }
                 } else {
-                    if (! (Effect::HI(to, _ocupd) & _bbord[Piece::BOU])) {
+                    if (! (Effect::HI(to, _ocupd) & _bbord[game::Piece::BOU])) {
                          m.add(Move::move   (from, to)); 
                     }
                 }

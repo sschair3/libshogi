@@ -46,7 +46,7 @@ int main (int argc, char *argv[])
             if (check) {
                 auto guard  = p.turn();
                 auto attack = Color::flip(guard);
-                auto ou     = p.bitboard(Piece::polar(OU, guard));
+                auto ou     = p.bitboard(game::Piece::polar(OU, guard));
                 auto ocp    = p.occupied();
 
                 if (chkAD) {

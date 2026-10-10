@@ -1,11 +1,37 @@
 # $Id:$
 
-LIBNAME = libshogi.so.0
+ifeq ($(shell uname -s),Darwin)
+LIBNAME    ?= libshogi.0.dylib
+INSTALLNAME ?= /usr/local/lib/$(LIBNAME)
+SHAREDFLAGS = -dynamiclib -install_name $(INSTALLNAME) \
+              -compatibility_version 0 -current_version 0
+else
+LIBNAME    ?= libshogi.so.0
+SHAREDFLAGS = -shared -Wl,-soname,$(LIBNAME)
+endif
 
 DEBUG   = n
 MCHCK   = n
 BMI2    = $(strip $(shell grep ^BMI2 ../Makefile | cut -d= -f 2))
 TLS     = $(strip $(shell grep ^TLS  ../Makefile | cut -d= -f 2))
+
+
+# ----------------------------------------------------------------------------
+# platform detection (Linux / macOS)
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_S),Darwin)
+RTLIB     =
+ifeq ($(UNAME_M),x86_64)
+ARCHFLAGS = -mtune=native
+else
+ARCHFLAGS =
+endif
+else
+RTLIB     = -lrt
+ARCHFLAGS = -mtune=native
+endif
+# ----------------------------------------------------------------------------
 
 CC      = g++
 DSFMT   = dSFMT-src-2.2.3
@@ -23,7 +49,7 @@ ifeq ($(MCHCK),y)
 CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion \
           -Wfloat-equal -Wpointer-arith -Wswitch-enum \
-          -O0 -g -mtune=native \
+          -O0 -g $(ARCHFLAGS) \
           -ftrapv -fthreadsafe-statics \
           -fsanitize=address \
           -I./ -Ifoundation -I$(DSFMT) -DDSFMT_MEXP=19937 \
@@ -35,12 +61,12 @@ CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -D_FOUNDATION_THREAD_DEBUG -D_FOUNDATION_VECTOR_DEBUG \
           -D_UTILITY_DEBUG \
           -D_GAME_CSACONNECTION_DEBUG
-LFLAGS  =  -pthread -lrt
+LFLAGS  =  -pthread $(RTLIB)
 else
 CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion \
           -Wfloat-equal -Wpointer-arith -Wswitch-enum \
-          -O0 -g -mtune=native \
+          -O0 -g $(ARCHFLAGS) \
           -ftrapv -fthreadsafe-statics \
           -I./ -Ifoundation -I$(DSFMT) -DDSFMT_MEXP=19937 \
           -I./csa -I./utility -I./shogi \
@@ -51,27 +77,27 @@ CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -D_FOUNDATION_THREAD_DEBUG -D_FOUNDATION_VECTOR_DEBUG \
           -D_UTILITY_DEBUG \
           -D_GAME_CSACONNECTION_DEBUG
-LFLAGS  = -pthread -lrt
+LFLAGS  = -pthread $(RTLIB)
 endif
 else
 ifeq ($(MCHCK),y)
 CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion \
           -Wfloat-equal -Wpointer-arith -Wswitch-enum \
-          -O3 -g -mtune=native -funroll-loops \
+          -O3 -g $(ARCHFLAGS) -funroll-loops \
           -fthreadsafe-statics -ftrapv -fsanitize=address \
           -I./ -Ifoundation -I$(DSFMT) -DDSFMT_MEXP=19937 \
           -I./csa -I./utility -I./shogi
-LFLAGS  = -pthread -lrt
+LFLAGS  = -pthread $(RTLIB)
 else
 CFLAGS += -std=c++14 -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
           -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion \
           -Wfloat-equal -Wpointer-arith -Wswitch-enum \
-          -O3 -g -mtune=native -funroll-loops \
+          -O3 -g $(ARCHFLAGS) -funroll-loops \
           -fthreadsafe-statics \
           -I./ -Ifoundation -I$(DSFMT) -DDSFMT_MEXP=19937 \
           -I./csa -I./utility -I./shogi
-LFLAGS  = -lpthread -lrt
+LFLAGS  = -lpthread $(RTLIB)
 endif
 endif
 
@@ -102,7 +128,7 @@ $(DSFMT)/dSFMT.o: $(DSFMT)/dSFMT.c $(DSFMT)/dSFMT.h
 	CFLAGS='-DDSFMT_MEXP=19937' make -C dSFMT-src-2.2.3/ dSFMT.o
 
 $(LIBNAME): $(HEADERS) $(OBJS)
-	$(CC) -shared -Wl,-soname,$@ -o $@ $(OBJS) $(LFLAGS)
+	$(CC) $(SHAREDFLAGS) -o $@ $(OBJS) $(LFLAGS)
 
 clean:
 	rm -f shogi/*.o shogi/*.gch utility/*.o utility/*.gch

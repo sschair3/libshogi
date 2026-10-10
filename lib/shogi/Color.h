@@ -73,7 +73,7 @@ static const Color          all[] = { COLOR_ALL };
 * @param c color to be fipped
 * @return  fliped color
 */
-inline Color::Color         flip(Color c)
+inline Color                flip(Color c)
 {
 
     return (c ^ White);

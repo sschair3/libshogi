@@ -21,7 +21,7 @@ static bool exitInError (const Position &p, std::string error)
 }
 
 
-static bool checkBFU (Square::Square sq)
+static bool checkBFU (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, BFU);
@@ -39,7 +39,7 @@ static bool checkBFU (Square::Square sq)
 }
 
 
-static bool checkBKY (const Position &p, Square::Square sq, Bitboard &m)
+static bool checkBKY (const Position &p, game::Square::Square sq, Bitboard &m)
 {
 
     Bitboard effect = Effect::KY(Color::Black, sq, m);
@@ -65,7 +65,7 @@ error:
 }
 
 
-static bool checkBKE (Square::Square sq)
+static bool checkBKE (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, BKE);
@@ -84,7 +84,7 @@ static bool checkBKE (Square::Square sq)
 }
 
 
-static bool checkBGI (Square::Square sq)
+static bool checkBGI (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, BGI);
@@ -105,7 +105,7 @@ static bool checkBGI (Square::Square sq)
 }
 
 
-static bool checkBKA (const Position &p, Square::Square sq, Bitboard &m)
+static bool checkBKA (const Position &p, game::Square::Square sq, Bitboard &m)
 {
 
     Bitboard effect = Effect::KA(sq, m);
@@ -132,7 +132,7 @@ error:
 }
 
 
-static bool checkBHI (const Position &p, Square::Square sq, Bitboard &m)
+static bool checkBHI (const Position &p, game::Square::Square sq, Bitboard &m)
 {
 
     Bitboard effect = Effect::HI(sq, m);
@@ -159,7 +159,7 @@ error:
 }
 
 
-static bool checkBKI (Square::Square sq)
+static bool checkBKI (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, BKI);
@@ -180,7 +180,7 @@ static bool checkBKI (Square::Square sq)
 }
 
 
-static bool checkBOU (Square::Square sq)
+static bool checkBOU (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, BOU);
@@ -202,7 +202,7 @@ static bool checkBOU (Square::Square sq)
 }
 
 
-static bool checkBUM (const Position &p, Square::Square sq, Bitboard &m)
+static bool checkBUM (const Position &p, game::Square::Square sq, Bitboard &m)
 {
 
     if (! checkBKI(sq)) {
@@ -213,7 +213,7 @@ static bool checkBUM (const Position &p, Square::Square sq, Bitboard &m)
 }
 
 
-static bool checkBRY (const Position &p, Square::Square sq, Bitboard &m)
+static bool checkBRY (const Position &p, game::Square::Square sq, Bitboard &m)
 {
 
     if (! checkBKI(sq)) {
@@ -224,7 +224,7 @@ static bool checkBRY (const Position &p, Square::Square sq, Bitboard &m)
 }
 
 
-static bool checkWFU (Square::Square sq)
+static bool checkWFU (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, WFU);
@@ -242,7 +242,7 @@ static bool checkWFU (Square::Square sq)
 }
 
 
-static bool checkWKY (const Position &p, Square::Square sq, Bitboard &m)
+static bool checkWKY (const Position &p, game::Square::Square sq, Bitboard &m)
 {
 
     Bitboard effect = Effect::KY(Color::White, sq, m);
@@ -268,7 +268,7 @@ error:
 }
 
 
-static bool checkWKE (Square::Square sq)
+static bool checkWKE (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, WKE);
@@ -287,7 +287,7 @@ static bool checkWKE (Square::Square sq)
 }
 
 
-static bool checkWGI (Square::Square sq)
+static bool checkWGI (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, WGI);
@@ -308,7 +308,7 @@ static bool checkWGI (Square::Square sq)
 }
 
 
-static bool checkWKI (Square::Square sq)
+static bool checkWKI (game::Square::Square sq)
 {
 
     Bitboard effect = Effect::AD(sq, WKI);
@@ -329,7 +329,7 @@ static bool checkWKI (Square::Square sq)
 }
 
 
-static bool checkWUM (const Position &p, Square::Square sq, Bitboard &m)
+static bool checkWUM (const Position &p, game::Square::Square sq, Bitboard &m)
 {
 
     if (! checkWKI(sq)) {
@@ -340,7 +340,7 @@ static bool checkWUM (const Position &p, Square::Square sq, Bitboard &m)
 }
 
 
-static bool checkWRY (const Position &p, Square::Square sq, Bitboard &m)
+static bool checkWRY (const Position &p, game::Square::Square sq, Bitboard &m)
 {
 
     if (! checkWKI(sq)) {
@@ -354,7 +354,7 @@ static bool checkWRY (const Position &p, Square::Square sq, Bitboard &m)
 static bool checkEffect  (const Position &p)
 {
 
-    for (auto pc : Piece::all) {
+    for (auto pc : game::Piece::all) {
 
         if (pc == EMP) {
             continue;

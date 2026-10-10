@@ -26,7 +26,7 @@ static const char *         KomaIndex[] = {
                                             "RY"
                                           };
 
-static const Square::Square toSquare [] = {
+static const game::Square::Square toSquare [] = {
   SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD,
   SQVD, SQ11, SQ12, SQ13, SQ14, SQ15, SQ16, SQ17, SQ18, SQ19, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD,
   SQVD, SQ21, SQ22, SQ23, SQ24, SQ25, SQ26, SQ27, SQ28, SQ29, SQVD, SQVD, SQVD, SQVD, SQVD, SQVD,
