@@ -1,4 +1,4 @@
-
+FILE_NAME := random_play
 PREFIX  = /usr/local
 INCDIR  = $(PREFIX)/include/shogi
 ifeq ($(shell uname -s),Darwin)
@@ -7,7 +7,7 @@ else
 LIBDIR  = $(PREFIX)/lib64
 endif
 
-EXEC    = shogiprogram
+EXEC    = $(FILE_NAME)
 
 DEBUG   = n
 MCHCK   = n
@@ -84,7 +84,7 @@ all: $(EXEC)
 %.o: %.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(EXEC): Main.o $(HEADERS) $(OBJS)
+$(EXEC): $(FILE_NAME).o $(HEADERS) $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS)
 
 clean:
