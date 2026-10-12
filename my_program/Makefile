@@ -1,6 +1,6 @@
-FILE_NAME := test
-HEADERS   = USI.h
-OBJS      = USI.o
+FILE_NAME := usi_engine
+HEADERS   = USI.h Search.h
+OBJS      = USI.o Search.o
 
 PREFIX  = /usr/local
 INCDIR  = $(PREFIX)/include/shogi
