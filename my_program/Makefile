@@ -1,4 +1,7 @@
-FILE_NAME := random_play
+FILE_NAME := test
+HEADERS   = USI.h
+OBJS      = USI.o
+
 PREFIX  = /usr/local
 INCDIR  = $(PREFIX)/include/shogi
 ifeq ($(shell uname -s),Darwin)
@@ -32,7 +35,7 @@ ARCHFLAGS = -mtune=native
 endif
 # ----------------------------------------------------------------------------
 
-CC      = g++
+CC      = $(CXX)
 
 ifeq ($(BMI2),y)
 CFLAGS += -DUSE_NATIVE_PEXTINSTRUCTION
