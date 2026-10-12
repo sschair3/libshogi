@@ -2,19 +2,29 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <format>
 
-void usi() {
+const std::string usiConnection::ID = "my_shogi_lib";
+const std::string usiConnection::AUTHOR = "伊藤匠吾";
 
+void usiConnection::usi()
+{
+    std::cout << "id name " << usiConnection::ID << std::endl;
+    std::cout << "id author " << usiConnection::AUTHOR << std::endl;
+    std::cout << "usiok" << std::endl;
 };
-void usinewgame();
-void setoption();
-void isready();
-void position();
-void set_limits();
-void go();
-void stop();
-void ponderhit();
-void quit();
+void usiConnection::usinewgame()
+{
+    std::cout << "usinewgame" << std::endl;
+};
+void usiConnection::setoption() {};
+void usiConnection::isready() {};
+void usiConnection::position() {};
+void usiConnection::set_limits() {};
+void usiConnection::go() {};
+void usiConnection::stop() {};
+void usiConnection::ponderhit() {};
+void usiConnection::quit() {};
 
 std::vector<std::string> usiConnection::split(std::string s)
 {
@@ -32,15 +42,7 @@ std::vector<std::string> usiConnection::split(std::string s)
             tempS += s[i];
         }
     }
+    ssplit.push_back(tempS);
+    tempS = "";
     return ssplit;
-}
-
-void usiConnection::run()
-{
-    std::string usi_prompt;
-    std::getline(std::cin, usi_prompt);
-    for (size_t i = 0; i < split(usi_prompt).size(); i++)
-    {
-        std::cout << split(usi_prompt)[i] << "\n";
-    }
 }

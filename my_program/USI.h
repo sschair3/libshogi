@@ -8,19 +8,24 @@
 
 class usiConnection
 {
+    static const std::string ID;
+    static const std::string AUTHOR;
+
 public:
-    std::string ID = "my_shogi_lib";
-    // void usiConnection::usi();
-    // void usiConnection::usinewgame();
-    // void usiConnection::setoption();
-    // void usiConnection::isready();
-    // void usiConnection::position();
-    // void usiConnection::set_limits();
-    // void usiConnection::go();
-    // void usiConnection::stop();
-    // void usiConnection::ponderhit();
-    // void usiConnection::quit();
-    void run();
+    // function for USI protocol
+    void usi();
+    void usinewgame();
+    void setoption();
+    void isready();
+    void position();
+    void set_limits();
+    void go();
+    void stop();
+    void ponderhit();
+    void quit();
+
+    // utilityfunctions
+    // USIプロトコルをコマンドごとに分割してstd::vectorに格納する
     std::vector<std::string> split(std::string s);
 };
 
