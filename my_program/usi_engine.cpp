@@ -12,7 +12,6 @@
 #include <cstdlib>
 #include <Usi.h>
 #include "Search.h"
-
 using namespace game;
 
 class MyEngine : public USIConnection
