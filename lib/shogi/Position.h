@@ -116,6 +116,12 @@ public:
     /// Reset to the first position
     void                        init       (void);
 
+    /// Set the position from SFEN string (implemented in Usi.cpp)
+    bool                        setSFEN    (const std::string &);
+
+    /// Get SFEN string of the position (implemented in Usi.cpp)
+    std::string                 sfen       (void)           const;
+
     /// Whole hash key
     Zobrist::key                hash       (void)           const;
 

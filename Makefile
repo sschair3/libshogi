@@ -17,7 +17,7 @@ HEADERS = lib/shogi/Bitboard.h lib/shogi/Color.h lib/shogi/Convert.h \
           lib/shogi/Direction.h lib/shogi/Effect.h lib/shogi/Evaluation.h \
           lib/shogi/Move.h lib/shogi/Piece.h lib/shogi/Position.h \
           lib/shogi/Region.h lib/shogi/Shogi.h lib/shogi/Square.h \
-          lib/shogi/Zobrist.h \
+          lib/shogi/Zobrist.h lib/shogi/Usi.h \
           lib/foundation/Common.h \
           lib/foundation/Array.h lib/foundation/Atomic.h \
           lib/foundation/BTree.h lib/foundation/HashTree.h \
@@ -32,7 +32,7 @@ HEADERS = lib/shogi/Bitboard.h lib/shogi/Color.h lib/shogi/Convert.h \
 PRGRMS  = lib/shogi/Direction.cpp lib/shogi/Region.cpp lib/shogi/Square.cpp \
           lib/shogi/Zobrist.cpp lib/shogi/Effect.cpp \
           lib/shogi/Shogi.cpp lib/shogi/Position.cpp \
-          lib/shogi/Bitboard.cpp lib/utility/Utility.cpp \
+          lib/shogi/Bitboard.cpp lib/shogi/Usi.cpp lib/utility/Utility.cpp \
           lib/csa/CSAConnection.cpp lib/csa/CSAFile.cpp lib/csa/CSASummary.cpp
 
 all: lib/$(LIBNAME) tags 

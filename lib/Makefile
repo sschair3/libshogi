@@ -104,7 +104,7 @@ endif
 HEADERS = shogi/Bitboard.h shogi/Color.h shogi/Convert.h shogi/Direction.h \
           shogi/Effect.h shogi/Evaluation.h shogi/Move.h \
           shogi/Piece.h shogi/Position.h shogi/Region.h shogi/Shogi.h \
-          shogi/Square.h shogi/Zobrist.h \
+          shogi/Square.h shogi/Zobrist.h shogi/Usi.h \
           foundation/Common.h \
           foundation/Array.h foundation/Atomic.h foundation/BTree.h \
           foundation/HashTree.h foundation/List.h foundation/MaxHeap.h \
@@ -117,7 +117,7 @@ OBJS    = $(DSFMT)/dSFMT.o \
           utility/Utility.o csa/CSASummary.o csa/CSAConnection.o csa/CSAFile.o \
           shogi/Bitboard.o shogi/Direction.o shogi/Effect.o \
           shogi/Position.o shogi/Region.o shogi/Shogi.o \
-          shogi/Square.o shogi/Zobrist.o
+          shogi/Square.o shogi/Zobrist.o shogi/Usi.o
 
 all: $(LIBNAME)
 
