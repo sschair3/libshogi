@@ -113,54 +113,45 @@ static Eval quiesMax(Position &p, Eval alpha, Eval beta, int depth)
     // 評価値の初期値は静的評価値
     // 上限が現在の静的評価値以下の場合探索しない
     Eval vmax = p.eval();
-
     // beta カット (standpat)
     if (beta <= vmax)
     {
         return beta;
     }
-
     // 末端なので静的評価値を返す
     if (depth > _searchDepth)
     {
         return vmax;
     }
-
     // 先手番で駒を取る手、王手を回避する手のみを生成 (ほぼ合法手)
     // 該当する手がなかった場合は静的評価値がこの局面の評価値となる
     Array<Move::Move, Move::Max> m;
     p.genCaptB(m);
-
     for (auto move : m)
     {
-
         // 玉を取る手か
         if (p.dustyB(move))
         {
             vmax = Infinity;
             break;
         }
-
         // 局面を進める
         auto back = p.move(move);
         // 後手番で静止探索
         auto value = quiesMin(p, max(vmax, alpha), beta, depth + 1);
         // 局面を戻す
         p.undo(back);
-
         // beta カット
         if (value >= beta)
         {
             return beta;
         }
-
         // 下限更新か
         if (value > vmax)
         {
             vmax = value;
         }
     }
-
     return vmax;
 }
 

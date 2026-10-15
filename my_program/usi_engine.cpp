@@ -24,14 +24,8 @@ protected:
     Move::Move think(Position &p, const Usi::Limits &limits) override
     {
         double timeLimit = limits.thinkTime(p.turn());
-
-        search::Result r = search::think(p, _maxDepth, timeLimit,
-                                         [&](const search::Result &it)
-                                         {
-                                             // 1 つの深さを読み終えるたびに info を出す
-                                             info(p, it.depth, it.value, it.nodes, it.seconds, it.best);
-                                         });
-
+        search::Result r = search::think(p, _maxDepth, timeLimit, [&](const search::Result &it)
+                                         { info(p, it.depth, it.value, it.nodes, it.seconds, it.best); });
         // 指せる手がなければ投了
         return r.hasMove ? r.best : Move::None;
     }
@@ -58,7 +52,7 @@ protected:
 
 private:
     /// 最大探索深さ
-    int _maxDepth = 50;
+    int _maxDepth = 30;
 };
 
 int main()
