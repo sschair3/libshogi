@@ -1,14 +1,12 @@
 /**
  * Search.cpp
  *
- * ネガマックス形式のアルファベータ法 + 反復深化 + 静止探索。
+ * 探索部: ネガマックス形式のアルファベータ法 + 反復深化 + 静止探索。
  *
  * ネガマックスでは、評価値を常に「手番側から見た値」(手番側が有利ほど大きい)
  * で扱う。相手にとって良い局面は自分にとって悪い局面なので、子局面の評価値の
  * 符号を反転すれば、先手番でも後手番でも「最大化」だけで探索を書ける。
- *
- * ただし外から見える Result::value は、これまでどおり「先手から見た値」に
- * 戻して返す (Search.h の約束を変えないため)。
+ * ただし外から見える Result::value と評価関数の戻り値は「先手から見た値」。
  *
  * 時間制限:
  *   - ハードリミット: 思考時間の目安 (timeLimit) を超えたら、探索の途中でも止める。
@@ -34,6 +32,9 @@ namespace search
     using MoveList = Array<Move::Move, Move::Max>;
 
     static uint64_t _nodes = 0;
+
+    /// 評価関数 (think() で受け取ったもの)
+    static Evaluator _evaluator = nullptr;
 
     /// 時間を確認する間隔 (ノード数。2 のべき乗 - 1 にしてビット演算で判定する)
     static const uint64_t CheckInterval = 4096 - 1;
@@ -64,11 +65,11 @@ namespace search
 
     /**
      * 手番側から見た静的評価値
-     * Position::eval() は先手から見た値なので、後手番なら符号を反転する
+     * 評価関数は先手から見た値を返すので、後手番なら符号を反転する
      */
     static Eval evaluate(Position &p)
     {
-        Eval e = p.eval();
+        Eval e = _evaluator(p);
         return (p.turn() == Color::Black) ? e : -e;
     }
 
@@ -123,7 +124,9 @@ namespace search
     /// これを超えると王手の連続で探索が爆発するので、静的評価値で打ち切る。
     static const int QuiesCheckPly = 6;
 
-    /// デルタ枝刈りの余裕 (評価関数が駒割りだけなら 0 でもよいが、念のため)
+    /// デルタ枝刈りの余裕
+    /// captureGain() は駒割りの増分しか見ないので、評価関数に駒の位置などを
+    /// 足したときは、その分だけこの値を大きくすること
     static const Eval DeltaMargin = 50;
 
     /**
@@ -146,66 +149,6 @@ namespace search
             gain += absolute(Value[pc | Piece::Promoted]) - absolute(Value[pc]);
         }
         return gain;
-    }
-
-    /**
-     * 色 by の駒が、マス sq に利いているか
-     *
-     * 「sq に by の駒が利いている」⇔「sq に相手側の同じ駒を置いたとき、その駒の利きの
-     * 中に by の駒がある」(先手と後手の駒の動きは点対称なので)。これを使って、
-     * 駒の種類ごとに利きの表 (Effect) とビットボードの AND をとって調べる。
-     */
-    static bool attacked(const Position &p, Square::Square sq, Color::Color by)
-    {
-        const Color::Color probe = Color::flip(by);
-        const Bitboard &occ = p.occupied();
-
-        // 1 マスだけ動く駒 (馬・竜の縦横・斜め 1 マスもここで調べる)
-        const Piece::Piece steppers[] = {
-            Piece::FU, Piece::KE, Piece::GI, Piece::KI, Piece::OU,
-            Piece::TO, Piece::NY, Piece::NK, Piece::NG, Piece::UM, Piece::RY};
-        for (auto k : steppers)
-        {
-            if (Effect::AD(sq, Piece::polar(k, probe)) & p.bitboard(Piece::polar(k, by)))
-            {
-                return true;
-            }
-        }
-
-        // 飛び駒
-        if (Effect::KA(sq, occ) & (p.bitboard(Piece::polar(Piece::KA, by)) |
-                                   p.bitboard(Piece::polar(Piece::UM, by))))
-        {
-            return true;
-        }
-        if (Effect::HI(sq, occ) & (p.bitboard(Piece::polar(Piece::HI, by)) |
-                                   p.bitboard(Piece::polar(Piece::RY, by))))
-        {
-            return true;
-        }
-        if (Effect::KY(probe, sq, occ) & p.bitboard(Piece::polar(Piece::KY, by)))
-        {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * 直前に指した側の玉が取られる状態になっていないか (= 直前の手が合法か)
-     *
-     * genCapt() はピンされた駒を動かす手など、自玉を取られる非合法手を
-     * わずかに生成することがあるので、指した直後にこれで確認して捨てる。
-     * @param p 手を指した直後の局面 (手番は相手側)
-     */
-    static bool lastMoveWasLegal(const Position &p)
-    {
-        const Color::Color mover = Color::flip(p.turn());
-        const Bitboard &king = p.bitboard(Piece::polar(Piece::OU, mover));
-        if (!king)
-        {
-            return true; // 玉がない局面 (詰将棋など)
-        }
-        return !attacked(p, king.lsb(), p.turn());
     }
 
     /**
@@ -285,8 +228,8 @@ namespace search
         {
             auto back = p.move(move);
 
-            // genCapt() の非合法手 (自玉を取られる手) は読まずに捨てる
-            if (!inCheck && !lastMoveWasLegal(p))
+            // genCapt() が生成する非合法手 (自玉を取られる手) は読まずに捨てる
+            if (!inCheck && !p.lastMoveIsLegal())
             {
                 p.undo(back);
                 continue;
@@ -414,9 +357,11 @@ namespace search
     }
 
     Result think(Position &p, int maxDepth, double timeLimit,
+                 Evaluator evaluator,
                  const std::function<void(const Result &)> &onIteration)
     {
         Result result;
+        _evaluator = evaluator;
         auto start = Clock::now();
 
         MoveList m;

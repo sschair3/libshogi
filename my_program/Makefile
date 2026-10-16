@@ -1,4 +1,4 @@
-FILE_NAME := usi_engine
+FILE_NAME := engine
 HEADERS   = Search.h
 OBJS      = Search.o
 
