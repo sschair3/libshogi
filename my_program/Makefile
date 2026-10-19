@@ -1,6 +1,15 @@
-FILE_NAME := engine
+FILE_NAME := engine2
+
+# エンジンごとに使うファイル
+#   make                    -> engine  (Search.cpp, 評価は駒割りだけ)
+#   make FILE_NAME=engine2  -> engine2 (Search2.cpp + eval.cpp)
+ifeq ($(FILE_NAME),engine2)
+HEADERS   = Search.h eval.h
+OBJS      = Search2.o eval.o
+else
 HEADERS   = Search.h
 OBJS      = Search.o
+endif
 
 PREFIX  = /usr/local
 INCDIR  = $(PREFIX)/include/shogi

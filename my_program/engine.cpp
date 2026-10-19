@@ -127,7 +127,7 @@ protected:
 private:
     /// 最大探索深さの既定値と上限
     /// (時間で探索を打ち切るので、大きくしておけば持ち時間いっぱいまで読む)
-    static const int DefaultDepth = 30;
+    static const int DefaultDepth = 5;
     static const int MaxDepth = 64;
 
     /// 最大探索深さ (USI オプション "Depth")
