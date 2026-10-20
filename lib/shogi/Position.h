@@ -122,6 +122,14 @@ public:
     /// Get SFEN string of the position (implemented in Usi.cpp)
     std::string                 sfen       (void)           const;
 
+    /// Check if the square is attacked by the pieces of the color
+    bool                        attacked   (Square::Square,
+                                            Color::Color  ) const;
+
+    /// Check if the last move was legal
+    /// (the king of the side who has just moved is not attacked)
+    bool                        lastMoveIsLegal (void)      const;
+
     /// Whole hash key
     Zobrist::key                hash       (void)           const;
 

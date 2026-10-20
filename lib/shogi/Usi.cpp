@@ -10,6 +10,7 @@
 
  *****************************************************************************/
 
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <sstream>
@@ -208,13 +209,20 @@ namespace game
             }
             long remain = (turn == Color::Black) ? btime : wtime;
             long inc = (turn == Color::Black) ? binc : winc;
+            // 戻り値は「秒」。0 以下は「時間制限なし」の意味になってしまうので、
+            // 余裕を引いた結果が小さくなりすぎないように下限を付ける。
             if (byoyomi > 0)
             {
-                return static_cast<double>(byoyomi) - 1100.0; // 1.1 秒の余裕を持つ
+                // 秒読みから 1.1 秒の余裕を取る (ただし秒読みの半分は必ず使う)
+                double ms = std::max(static_cast<double>(byoyomi) - 1100.0,
+                                     static_cast<double>(byoyomi) * 0.5);
+                return ms / 1000.0;
             }
             if (remain > 0 || inc > 0)
             {
-                return (static_cast<double>(remain) / 75.0 + static_cast<double>(inc)) - 500.0;
+                // 残り時間の 1/75 + 加算から 0.5 秒の余裕を取る (最低 10 ミリ秒)
+                double ms = static_cast<double>(remain) / 75.0 + static_cast<double>(inc) - 500.0;
+                return std::max(ms, 10.0) / 1000.0;
             }
             return 0.0;
         }
@@ -608,8 +616,14 @@ namespace game
     void USIConnection::_position(const std::vector<std::string> &args)
     {
         _initialize();
+
+        // 最後まで正しく反映できたときだけ true に戻す。
+        // 途中で失敗したら、_pos は前の局面や途中までの局面のままなので使わない
+        _positionValid = false;
+
         if (args.size() < 2)
         {
+            std::cout << "info string invalid position command" << std::endl;
             return;
         }
 
@@ -634,6 +648,7 @@ namespace game
         }
         else
         {
+            std::cout << "info string invalid position command: " << args[i] << std::endl;
             return;
         }
 
@@ -650,6 +665,8 @@ namespace game
                 _pos.move(m);
             }
         }
+
+        _positionValid = true;
     }
 
     // go [btime x] [wtime x] [byoyomi x] [binc x] [winc x] [infinite]
@@ -678,8 +695,18 @@ namespace game
                 limits.infinite = true;
         }
 
-        Move::Move best = think(_pos, limits);
-        std::string bestmove = Move::isNull(best) ? "resign" : Usi::toUSI(best);
+        // 局面が正しく設定できていないときは、間違った局面で指さずに投了する
+        std::string bestmove;
+        if (!_positionValid)
+        {
+            std::cout << "info string position is invalid, resign" << std::endl;
+            bestmove = "resign";
+        }
+        else
+        {
+            Move::Move best = think(_pos, limits);
+            bestmove = Move::isNull(best) ? "resign" : Usi::toUSI(best);
+        }
 
         if (limits.infinite)
         {
@@ -715,11 +742,11 @@ namespace game
         Evaluation::Eval v = (p.turn() == Color::Black) ? value : -value;
 
         std::cout << "info depth " << depth;
-        if (v >= Usi::MateThreshold)
+        if (v >= Evaluation::MateThreshold)
         {
             std::cout << " score mate " << (Evaluation::Infinity - v);
         }
-        else if (v <= -Usi::MateThreshold)
+        else if (v <= -Evaluation::MateThreshold)
         {
             std::cout << " score mate -" << (Evaluation::Infinity + v);
         }

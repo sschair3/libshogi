@@ -57,7 +57,13 @@ namespace game
             using Eval = int;
 
             /// Infinite value
-            const Eval Infinity = 9999;
+            /// (駒割りの合計は最大でも 2 万 3 千程度なので、それより十分大きくする)
+            const Eval Infinity = 32000;
+
+            /// 詰みの評価値の目安
+            /// 詰みは「Infinity - 詰みまでの手数」で表すので、|評価値| がこれ以上なら
+            /// 詰みを読み切っているとみなす
+            const Eval MateThreshold = Infinity - 1000;
 
             /// Comparison
             inline Eval max(Eval v1, Eval v2)

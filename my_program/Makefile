@@ -1,15 +1,12 @@
-FILE_NAME := engine2
+FILE_NAME := self_match
 
 # エンジンごとに使うファイル
 #   make                    -> engine  (Search.cpp, 評価は駒割りだけ)
-#   make FILE_NAME=engine2  -> engine2 (Search2.cpp + eval.cpp)
-ifeq ($(FILE_NAME),engine2)
-HEADERS   = Search.h eval.h
-OBJS      = Search2.o eval.o
-else
-HEADERS   = Search.h
-OBJS      = Search.o
-endif
+#   make FILE_NAME=engine2  -> engine2 (Search2.cpp + eval2.cpp, pst2.txt を読む)
+#   make FILE_NAME=engine3  -> engine3 (Search2.cpp + eval3.cpp, pst3.txt を読む)
+# HEADERS   = Search.h eval.h
+# OBJS      = Search.o eval.o
+
 
 PREFIX  = /usr/local
 INCDIR  = $(PREFIX)/include/shogi

@@ -39,10 +39,6 @@ namespace Usi {
 /// 平手初期局面の SFEN
 extern const std::string StartSFEN;
 
-/// 詰みの評価値の目安。|評価値| >= MateThreshold なら
-/// 「Infinity - 評価値の絶対値」手で詰むとみなして info に score mate を出す
-const Evaluation::Eval   MateThreshold = Evaluation::Infinity - 1000;
-
 /**
  * 指し手を USI 形式の文字列にする (7g7f, 8h2b+, P*5e)
  * 局面を見ずに変換できる。Move::None なら "none" を返す
@@ -76,7 +72,8 @@ struct Limits {
 
     /**
      * 思考時間の目安 (秒) を簡単な方法で決める
-     * 秒読みがあればその 8 割、なければ残り時間の 1/40 + 加算。
+     * 秒読みがあれば秒読みから 1.1 秒引いた時間 (ただし秒読みの半分以上)、
+     * なければ残り時間の 1/75 + 加算から 0.5 秒引いた時間 (最低 10 ミリ秒)。
      * @return 秒。0 なら時間制限なし
      */
     double      thinkTime (Color::Color turn) const;
@@ -195,6 +192,10 @@ private:
 
     /// 初期化済みか
     bool                        _initialized = false;
+
+    /// 直前の position コマンドを最後まで正しく反映できたか
+    /// (false のときは go で探索せず投了する。前の局面のまま指さないため)
+    bool                        _positionValid = true;
 
     /// go infinite のとき、stop が来るまで保留する bestmove
     std::string                 _pendingBestmove;

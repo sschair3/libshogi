@@ -26,7 +26,7 @@ using namespace game;
 class Engine : public USIConnection
 {
 public:
-    Engine() : USIConnection("my_shogi_lib 2", "伊藤匠吾") {}
+    Engine() : USIConnection("my_shogi_lib 3", "伊藤匠吾") {}
 
 protected:
     /// isready: ライブラリの初期化後に呼ばれる
@@ -75,7 +75,7 @@ protected:
 private:
     /// 最大探索深さの既定値と上限
     /// (時間で探索を打ち切るので、大きくしておけば持ち時間いっぱいまで読む)
-    static const int DefaultDepth = 5;
+    static const int DefaultDepth = 30;
     static const int MaxDepth = 64;
 
     /// 最大探索深さ (USI オプション "Depth")
