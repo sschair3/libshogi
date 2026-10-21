@@ -4,7 +4,7 @@
  @file       SpinLock.h
 
  @brief      Spin lock implementation
-  
+
  @author     Hiroki Takada (TSoftware - http://www.tsoftware.jp)
 
  @date       2014-03-14
@@ -36,8 +36,9 @@
    DATE          REV    REMARK
   ============= ====== =======================================================
   14th Mar 2014  0.1    Initial release
- 
- *****************************************************************************/ 
+   2nd Oct 2026  0.2   Modified by 伊藤匠吾: ported to macOS
+
+ *****************************************************************************/
 
 #ifndef _FOUNDATION_SPINLOCK_H
 #define _FOUNDATION_SPINLOCK_H
@@ -53,163 +54,159 @@
 #endif
 
 // begin namespace 'foundation'
-namespace foundation {
+namespace foundation
+{
 
 /* --------------------------- macro declaration --------------------------- */
-#ifdef  _FOUNDATION_SPINLOCK_DEBUG
-#define _FOUNDATION_SPINLOCK_CHECK(x) { assert ( (x) ); }
+#ifdef _FOUNDATION_SPINLOCK_DEBUG
+#define _FOUNDATION_SPINLOCK_CHECK(x) \
+    {                                 \
+        assert((x));                  \
+    }
 #define _FOUNDATION_SPINLOCK_DEBUG_ERROR_STRING_MAX 256
-#define _FOUNDATION_SPINLOCK_DEBUG_OUT(fmt, args...)  { \
-            fprintf(stderr, "FOUNDATION_SPINLOCK_DEBUG     : " fmt, ## args); \
-        }
-#define _FOUNDATION_SPINLOCK_DEBUG_FUNCTION_RESULT(x) { \
-            char errorString_[_FOUNDATION_SPINLOCK_DEBUG_ERROR_STRING_MAX]; \
-            sprintf(errorString_, "%s - %s - %d", (x) , __FILE__, __LINE__); \
-            perror(errorString_); \
-        }
+#define _FOUNDATION_SPINLOCK_DEBUG_OUT(fmt, args...)                     \
+    {                                                                    \
+        fprintf(stderr, "FOUNDATION_SPINLOCK_DEBUG     : " fmt, ##args); \
+    }
+#define _FOUNDATION_SPINLOCK_DEBUG_FUNCTION_RESULT(x)                   \
+    {                                                                   \
+        char errorString_[_FOUNDATION_SPINLOCK_DEBUG_ERROR_STRING_MAX]; \
+        sprintf(errorString_, "%s - %s - %d", (x), __FILE__, __LINE__); \
+        perror(errorString_);                                           \
+    }
 #else
 #define _FOUNDATION_SPINLOCK_CHECK(x)
 #define _FOUNDATION_SPINLOCK_DEBUG_OUT(fmt, args...)
 #define _FOUNDATION_SPINLOCK_DEBUG_FUNCTION_RESULT(x)
 #endif
-/* ------------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------------- */
 
+    /* ------------------------- prototype declaration ------------------------- */
+    class SpinLockObject;
+    class SpinLock;
+    /* ------------------------------------------------------------------------- */
 
+    /* ------------------------- spinlock object class ------------------------- */
 
-/* ------------------------- prototype declaration ------------------------- */
-class SpinLockObject;
-class SpinLock;
-/* ------------------------------------------------------------------------- */
-
-
-
-/* ------------------------- spinlock object class ------------------------- */
-
-class SpinLockObject {
-
-    friend class SpinLock;
-
-public:
-
-    /// constructor
-    SpinLockObject  ()
+    class SpinLockObject
     {
+
+        friend class SpinLock;
+
+    public:
+        /// constructor
+        SpinLockObject()
+        {
 #ifdef _FOUNDATION_SPINLOCK_PORTABLE
-        _lock.clear();
+            _lock.clear();
 #else
-        pthread_spin_init(&_lock, 0);
+            pthread_spin_init(&_lock, 0);
 #endif
-    }
-
-    /// destructor
-    virtual ~SpinLockObject ()
-    {
-#ifndef _FOUNDATION_SPINLOCK_PORTABLE
-        pthread_spin_destroy(&_lock);
-#endif
-    }
-
-private:
-
-    /// void copy constructor
-    SpinLockObject (const SpinLockObject &);
-
-    /// void copy operator
-    SpinLockObject &        operator= (const SpinLockObject &);
-
-    /// lock variable
-#ifdef _FOUNDATION_SPINLOCK_PORTABLE
-    std::atomic_flag        _lock = ATOMIC_FLAG_INIT;
-#else
-    pthread_spinlock_t      _lock;
-#endif
-
-};
-
-/* ------------------------------------------------------------------------- */
-
-
-
-/* ---------------------------- spinLock  class ---------------------------- */
-
-class SpinLock
-{
-
-public:
-
-#ifdef _FOUNDATION_SPINLOCK_PORTABLE
-    /// lock type
-    typedef std::atomic_flag    lock_type;
-
-    /// acquire
-    static void             acquire (lock_type *l)
-    {
-        while (l->test_and_set(std::memory_order_acquire)) {
-            sched_yield();
         }
-    }
 
-    /// release
-    static void             release (lock_type *l)
-    {
-        l->clear(std::memory_order_release);
-    }
+        /// destructor
+        virtual ~SpinLockObject()
+        {
+#ifndef _FOUNDATION_SPINLOCK_PORTABLE
+            pthread_spin_destroy(&_lock);
+#endif
+        }
+
+    private:
+        /// void copy constructor
+        SpinLockObject(const SpinLockObject &);
+
+        /// void copy operator
+        SpinLockObject &operator=(const SpinLockObject &);
+
+        /// lock variable
+#ifdef _FOUNDATION_SPINLOCK_PORTABLE
+        std::atomic_flag _lock = ATOMIC_FLAG_INIT;
 #else
-    /// lock type
-    typedef pthread_spinlock_t  lock_type;
+        pthread_spinlock_t _lock;
+#endif
+    };
 
-    /// acquire
-    static void             acquire (lock_type *l)
-    {
-        pthread_spin_lock(l);
-    }
+    /* ------------------------------------------------------------------------- */
 
-    /// release
-    static void             release (lock_type *l)
+    /* ---------------------------- spinLock  class ---------------------------- */
+
+    class SpinLock
     {
-        pthread_spin_unlock(l);
-    }
+
+    public:
+#ifdef _FOUNDATION_SPINLOCK_PORTABLE
+        /// lock type
+        typedef std::atomic_flag lock_type;
+
+        /// acquire
+        static void acquire(lock_type *l)
+        {
+            while (l->test_and_set(std::memory_order_acquire))
+            {
+                sched_yield();
+            }
+        }
+
+        /// release
+        static void release(lock_type *l)
+        {
+            l->clear(std::memory_order_release);
+        }
+#else
+        /// lock type
+        typedef pthread_spinlock_t lock_type;
+
+        /// acquire
+        static void acquire(lock_type *l)
+        {
+            pthread_spin_lock(l);
+        }
+
+        /// release
+        static void release(lock_type *l)
+        {
+            pthread_spin_unlock(l);
+        }
 #endif
 
-    /// constructor
-    SpinLock (SpinLockObject &v)
-    {
-        _var = &(v._lock);
-        acquire(_var);
-    }
+        /// constructor
+        SpinLock(SpinLockObject &v)
+        {
+            _var = &(v._lock);
+            acquire(_var);
+        }
 
-    /// constructor
-    SpinLock (SpinLockObject *v)
-    {
-        _var = &(v->_lock);
-        acquire(_var);
-    }
+        /// constructor
+        SpinLock(SpinLockObject *v)
+        {
+            _var = &(v->_lock);
+            acquire(_var);
+        }
 
-    /// destructor 
-    ~SpinLock ()
-    {
-        release(_var);
-    }
+        /// destructor
+        ~SpinLock()
+        {
+            release(_var);
+        }
 
-private:
+    private:
+        /// void default constructor
+        SpinLock();
 
-    /// void default constructor
-    SpinLock  ();
+        /// void copy constructor
+        SpinLock(const SpinLock &);
 
-    /// void copy constructor
-    SpinLock  (const SpinLock &);
+        /// void copy operator
+        SpinLock &operator=(const SpinLock &);
 
-    /// void copy operator
-    SpinLock &              operator= (const SpinLock &);
+        /// lock variable
+        lock_type *_var;
+    };
 
-    /// lock variable
-    lock_type *             _var;
+    /* ------------------------------------------------------------------------- */
 
-};
-
-/* ------------------------------------------------------------------------- */
-
-// end namespace 'foundation'
+    // end namespace 'foundation'
 }
 
 #endif

@@ -16,3 +16,5 @@ regression/testpin
 regression/testundo
 regression/testvalue
 tags
+.DS_Store
+lib/libshogi.0.dylib

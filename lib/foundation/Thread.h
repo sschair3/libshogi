@@ -3,7 +3,7 @@
 
  @file       Thread.h
 
- @brief      Thread implementation 
+ @brief      Thread implementation
 
  @author     Hiroki Takada (TSoftware - http://www.tsoftware.jp)
 
@@ -36,8 +36,9 @@
   DATE          REV    REMARK
  ============= ====== =======================================================
  24th Mar 2014  0.1    Initial release.
- 
- *****************************************************************************/ 
+  2nd Oct 2026  0.2   Modified by 伊藤匠吾: ported to macOS
+
+ *****************************************************************************/
 
 #ifndef _FOUNDATION_THREAD_H
 #define _FOUNDATION_THREAD_H
@@ -50,321 +51,304 @@
 #include <List.h>
 
 // begin namespace 'foundation'
-namespace foundation {
+namespace foundation
+{
 
 /* --------------------------- macro declaration --------------------------- */
-#ifdef  _FOUNDATION_THREAD_DEBUG
-#define _FOUNDATION_THREAD_CHECK(x) { assert ( (x) ); }
+#ifdef _FOUNDATION_THREAD_DEBUG
+#define _FOUNDATION_THREAD_CHECK(x) \
+    {                               \
+        assert((x));                \
+    }
 #define _FOUNDATION_THREAD_DEBUG_ERROR_STRING_MAX 256
-#define _FOUNDATION_THREAD_DEBUG_OUT(fmt, args...)  { \
-            fprintf(stderr, "FOUNDATION_THREAD_DEBUG     : " fmt, ## args); \
-        }
-#define _FOUNDATION_THREAD_DEBUG_FUNCTION_RESULT(x) { \
-            char errorString_[_FOUNDATION_THREAD_DEBUG_ERROR_STRING_MAX]; \
-            sprintf(errorString_, "%s - %s - %d", (x) , __FILE__, __LINE__); \
-            perror(errorString_); \
-        }
+#define _FOUNDATION_THREAD_DEBUG_OUT(fmt, args...)                     \
+    {                                                                  \
+        fprintf(stderr, "FOUNDATION_THREAD_DEBUG     : " fmt, ##args); \
+    }
+#define _FOUNDATION_THREAD_DEBUG_FUNCTION_RESULT(x)                     \
+    {                                                                   \
+        char errorString_[_FOUNDATION_THREAD_DEBUG_ERROR_STRING_MAX];   \
+        sprintf(errorString_, "%s - %s - %d", (x), __FILE__, __LINE__); \
+        perror(errorString_);                                           \
+    }
 #else
 #define _FOUNDATION_THREAD_CHECK(x)
 #define _FOUNDATION_THREAD_DEBUG_OUT(fmt, args...)
 #define _FOUNDATION_THREAD_DEBUG_FUNCTION_RESULT(x)
 #endif
-/* ------------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------------- */
 
+    /* -------------------------- thread exceptions ---------------------------- */
 
-
-/* -------------------------- thread exceptions ---------------------------- */
-
-class ThreadException {};
-
-/* ------------------------------------------------------------------------- */
-
-
-
-/* ------------------------- prototype declaration ------------------------- */
-
-template <typename T, typename V>
-class Thread;
-
-/* ------------------------------------------------------------------------- */
-
-
-
-/* ------------------------- thread function class ------------------------- */
-
-template <typename T, typename V>
-class Thread : public SpinLockObject {
-
-public:
-
-    /// global sync
-    static Semaphore            globalSync;
-
-    /// thread state
-    enum ThreadState {
-        INITIALIZED,
-        STARTED,
-        CLEARED
+    class ThreadException
+    {
     };
 
-    /// constructor
-    Thread ();
+    /* ------------------------------------------------------------------------- */
 
-    /// destructor
-    virtual ~Thread ();
+    /* ------------------------- prototype declaration ------------------------- */
 
-    /// run the thread
-    void                        run      (V &);
+    template <typename T, typename V>
+    class Thread;
 
-    /// synchronize with thread termination
-    void                        sync     (void);
+    /* ------------------------------------------------------------------------- */
 
-    /// try to synchronize with thread termination
-    bool                        trysync  (void);
+    /* ------------------------- thread function class ------------------------- */
 
-    /// get argument of the thread
-    V                           argument (void);
+    template <typename T, typename V>
+    class Thread : public SpinLockObject
+    {
 
-    /// get returned value of the thread
-    T                           result   (void);
+    public:
+        /// global sync
+        static Semaphore globalSync;
 
-    /// yeild CPU to other threads
-    static void                 yield    (void);
+        /// thread state
+        enum ThreadState
+        {
+            INITIALIZED,
+            STARTED,
+            CLEARED
+        };
 
+        /// constructor
+        Thread();
 
-private:
+        /// destructor
+        virtual ~Thread();
 
-    /// thread data
-    struct _threadData {
-        Thread<T,V> *           reference;
-        T *                     retval;
-        V                       argument;
-        Semaphore *             sync;
+        /// run the thread
+        void run(V &);
+
+        /// synchronize with thread termination
+        void sync(void);
+
+        /// try to synchronize with thread termination
+        bool trysync(void);
+
+        /// get argument of the thread
+        V argument(void);
+
+        /// get returned value of the thread
+        T result(void);
+
+        /// yeild CPU to other threads
+        static void yield(void);
+
+    private:
+        /// thread data
+        struct _threadData
+        {
+            Thread<T, V> *reference;
+            T *retval;
+            V argument;
+            Semaphore *sync;
+        };
+
+        /// void copy constructor
+        Thread(const Thread &);
+
+        /// void copy operator
+        Thread &operator=(const Thread &);
+
+        /// thread variable
+        pthread_t _th;
+
+        /// semaphore for terminal sync
+        Semaphore _sync;
+
+        /// variable to hold thread argument
+        V _arg;
+
+        /// variable to hold thread returned value
+        T _retval;
+
+        /// flag to check if thread is running
+        ThreadState _state;
+
+        /// thread data
+        _threadData _thdat;
+
+        /// thread function
+        virtual T _thread(V) = 0;
+
+        /// thread uniform function
+        static void *_run(void *);
     };
 
-    /// void copy constructor
-    Thread (const Thread &);
+    /**
+     * Constructor
+     * @param arg   argument given to the thread functoin
+     */
+    template <typename T, typename V>
+    Thread<T, V>::Thread()
+        : _state(INITIALIZED)
+    {
 
-    /// void copy operator
-    Thread &                    operator= (const Thread &);
+        // sync semaphore is initialized to 0 by its constructor
+    }
 
-    /// thread variable
-    pthread_t                   _th;
-
-    /// semaphore for terminal sync
-    Semaphore                   _sync;
-
-    /// variable to hold thread argument
-    V                           _arg;
-
-    /// variable to hold thread returned value
-    T                           _retval;
-
-    /// flag to check if thread is running
-    ThreadState                 _state;
-
-    /// thread data
-    _threadData                 _thdat;
-
-    /// thread function
-    virtual T                   _thread (V) = 0;
-
-    /// thread uniform function
-    static void *               _run (void *);
-
-};
-
-
-
-/**
- * Constructor
- * @param arg   argument given to the thread functoin
- */
-template <typename T, typename V>
-Thread<T,V>::Thread ()
- : _state(INITIALIZED)
-{
-
-    // sync semaphore is initialized to 0 by its constructor
-
-}
-
-
-
-/**
- * Destructor
- */
-template <typename T, typename V>
-Thread<T,V>::~Thread ()
-{
-        if (_state != CLEARED && _state != INITIALIZED) {
+    /**
+     * Destructor
+     */
+    template <typename T, typename V>
+    Thread<T, V>::~Thread()
+    {
+        if (_state != CLEARED && _state != INITIALIZED)
+        {
             pthread_join(_th, NULL);
         }
-}
-
-
-
-template <typename T, typename V>
-void Thread<T,V>::run (V &arg)
-{
-
-    if (_state == STARTED) {
-        return;
     }
 
-    // copy arg
-    _arg = arg;
+    template <typename T, typename V>
+    void Thread<T, V>::run(V &arg)
+    {
 
-    // initialize thread thread data
-    _thdat.reference = this;
-    _thdat.retval    = &_retval;
-    _thdat.argument  = arg;
-    _thdat.sync      = &_sync;
+        if (_state == STARTED)
+        {
+            return;
+        }
 
-    // invoke thread
-    int rtn = pthread_create(&_th, NULL, &_run, &_thdat);
-    if (rtn != 0) {
-        throw ThreadException();
+        // copy arg
+        _arg = arg;
+
+        // initialize thread thread data
+        _thdat.reference = this;
+        _thdat.retval = &_retval;
+        _thdat.argument = arg;
+        _thdat.sync = &_sync;
+
+        // invoke thread
+        int rtn = pthread_create(&_th, NULL, &_run, &_thdat);
+        if (rtn != 0)
+        {
+            throw ThreadException();
+        }
+
+        // set state
+        _state = STARTED;
     }
 
-    // set state
-    _state = STARTED;
+    /**
+     * Wait until the threads' termination. After this synchronization, the return
+     * value will be available to examine.
+     */
+    template <typename T, typename V>
+    void Thread<T, V>::sync(void)
+    {
 
-}
+        if (_state != STARTED)
+        {
+            return;
+        }
 
+        // lock
+        SpinLock lock(this);
 
+        // wait
+        _sync.wait();
 
-/**
- * Wait until the threads' termination. After this synchronization, the return
- * value will be available to examine.
- */
-template <typename T, typename V>
-void Thread<T,V>::sync (void)
-{
+        // join
+        pthread_join(_th, NULL);
 
-    if (_state != STARTED) {
-        return;
+        // set state
+        _state = CLEARED;
     }
 
-    // lock
-    SpinLock    lock(this);
+    /**
+     * Try to synchronize with the threads' termination. Check if the attempt
+     * is blocked, return immediately if the block will occur.
+     * @return true if successfully synchronized with the threads' termination.
+     *         false if not.
+     */
+    template <typename T, typename V>
+    bool Thread<T, V>::trysync(void)
+    {
 
-    // wait
-    _sync.wait();
+        _FOUNDATION_THREAD_CHECK(_state == STARTED);
 
-    // join
-    pthread_join(_th, NULL);
+        // lock
+        SpinLock lock(this);
 
-    // set state
-    _state = CLEARED;
+        // try wait
+        if (!_sync.check())
+        {
+            return false;
+        }
 
-}
+        // join
+        pthread_join(_th, NULL);
 
+        // set state
+        _state = CLEARED;
 
-
-/**
- * Try to synchronize with the threads' termination. Check if the attempt
- * is blocked, return immediately if the block will occur.
- * @return true if successfully synchronized with the threads' termination.
- *         false if not.
- */
-template <typename T, typename V>
-bool Thread<T,V>::trysync (void)
-{
-
-    _FOUNDATION_THREAD_CHECK(_state == STARTED);
-
-    // lock
-    SpinLock    lock(this);
-
-    // try wait
-    if (! _sync.check()) {
-        return false;
+        return true;
     }
 
-    // join
-    pthread_join(_th, NULL);
+    /**
+     * Get the argument value copied at first.
+     * @return argument value
+     */
+    template <typename T, typename V>
+    inline V Thread<T, V>::argument(void)
+    {
+        // lock
+        SpinLock lock(this);
+        return _arg;
+    }
 
-    // set state
-    _state = CLEARED;
+    /**
+     * Get the returned value of the thread function. This isn't significant
+     * before thread end.
+     * @return returned value
+     */
+    template <typename T, typename V>
+    inline T Thread<T, V>::result(void)
+    {
 
-    return true;
+        _FOUNDATION_THREAD_CHECK(_state == CLEARED);
 
-}
+        // lock
+        SpinLock lock(this);
+        return _retval;
+    }
 
+    /**
+     * Yield CPU to other threads
+     */
+    template <typename T, typename V>
+    inline void Thread<T, V>::yield(void)
+    {
+        sched_yield();
+    }
 
+    /**
+     * Internal wrapper function to invoke the thread function.
+     * @param  data uniform argument for pthread function
+     * @return uniform return value for pthread function
+     */
+    template <typename T, typename V>
+    void *Thread<T, V>::_run(void *data)
+    {
 
-/**
- * Get the argument value copied at first.
- * @return argument value
- */
-template <typename T, typename V>
-inline V Thread<T,V>::argument (void)
-{
-    // lock
-    SpinLock lock(this);
-    return   _arg;
-}
+        // cast thread data
+        _threadData *thdat = static_cast<_threadData *>(data);
 
+        // invoke thread function
+        *(thdat->retval) = thdat->reference->_thread(thdat->argument);
 
+        // sync
+        thdat->sync->post();
 
-/**
- * Get the returned value of the thread function. This isn't significant
- * before thread end.
- * @return returned value
- */
-template <typename T, typename V>
-inline T Thread<T,V>::result (void)
-{
+        // global sync
+        globalSync.post();
 
-    _FOUNDATION_THREAD_CHECK(_state == CLEARED);
+        return (void *)0;
+    }
 
-    // lock
-    SpinLock lock(this);
-    return   _retval;
-}
+    /* ------------------------------------------------------------------------- */
 
-
-
-/**
- * Yield CPU to other threads
- */
-template <typename T, typename V>
-inline void Thread<T,V>::yield (void)
-{
-    sched_yield();
-}
-
-
-
-/**
- * Internal wrapper function to invoke the thread function.
- * @param  data uniform argument for pthread function
- * @return uniform return value for pthread function
- */
-template <typename T, typename V>
-void * Thread<T,V>::_run (void *data)
-{
-
-    // cast thread data
-    _threadData *thdat = static_cast<_threadData *>(data);
-
-    // invoke thread function
-    *(thdat->retval) = thdat->reference->_thread(thdat->argument);
-
-    // sync 
-    thdat->sync->post();
-
-    // global sync
-    globalSync.post();
-
-    return (void *) 0;
-
-}
-
-/* ------------------------------------------------------------------------- */
-
-// end namespace 'foundation'
+    // end namespace 'foundation'
 }
 
 #endif

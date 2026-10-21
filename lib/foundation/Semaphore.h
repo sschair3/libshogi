@@ -4,7 +4,7 @@
  @file       Semaphore.h
 
  @brief      Semaphore implementation
-  
+
  @author     Hiroki Takada (TSoftware - http://www.tsoftware.jp)
 
  @date       2014-03-24
@@ -36,8 +36,9 @@
    DATE          REV    REMARK
   ============= ====== =======================================================
   24th Mar 2014  0.1    Initial release
- 
- *****************************************************************************/ 
+   2nd Oct 2026  0.2   Modified by 伊藤匠吾: ported to macOS
+
+ *****************************************************************************/
 
 #ifndef _FOUNDATION_SEMAPHORE_H
 #define _FOUNDATION_SEMAPHORE_H
@@ -56,162 +57,166 @@
 #endif
 
 // begin namespace 'foundation'
-namespace foundation {
+namespace foundation
+{
 
 /* --------------------------- macro declaration --------------------------- */
-#ifdef  _FOUNDATION_SEMAPHORE_DEBUG
-#define _FOUNDATION_SEMAPHORE_CHECK(x) { assert ( (x) ); }
+#ifdef _FOUNDATION_SEMAPHORE_DEBUG
+#define _FOUNDATION_SEMAPHORE_CHECK(x) \
+    {                                  \
+        assert((x));                   \
+    }
 #define _FOUNDATION_SEMAPHORE_DEBUG_ERROR_STRING_MAX 256
-#define _FOUNDATION_SEMAPHORE_DEBUG_OUT(fmt, args...)  { \
-            fprintf(stderr, "FOUNDATION_SEMAPHORE_DEBUG     : " fmt, ## args); \
-        }
-#define _FOUNDATION_SEMAPHORE_DEBUG_FUNCTION_RESULT(x) { \
-            char errorString_[_FOUNDATION_SEMAPHORE_DEBUG_ERROR_STRING_MAX]; \
-            sprintf(errorString_, "%s - %s - %d", (x) , __FILE__, __LINE__); \
-            perror(errorString_); \
-        }
+#define _FOUNDATION_SEMAPHORE_DEBUG_OUT(fmt, args...)                     \
+    {                                                                     \
+        fprintf(stderr, "FOUNDATION_SEMAPHORE_DEBUG     : " fmt, ##args); \
+    }
+#define _FOUNDATION_SEMAPHORE_DEBUG_FUNCTION_RESULT(x)                   \
+    {                                                                    \
+        char errorString_[_FOUNDATION_SEMAPHORE_DEBUG_ERROR_STRING_MAX]; \
+        sprintf(errorString_, "%s - %s - %d", (x), __FILE__, __LINE__);  \
+        perror(errorString_);                                            \
+    }
 #else
 #define _FOUNDATION_SEMAPHORE_CHECK(x)
 #define _FOUNDATION_SEMAPHORE_DEBUG_OUT(fmt, args...)
 #define _FOUNDATION_SEMAPHORE_DEBUG_FUNCTION_RESULT(x)
 #endif
-/* ------------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------------- */
 
+    /* ------------------------- prototype declaration ------------------------- */
+    class Semaphore;
+    /* ------------------------------------------------------------------------- */
 
+    /* ---------------------------- semaphore class ---------------------------- */
 
-/* ------------------------- prototype declaration ------------------------- */
-class Semaphore;
-/* ------------------------------------------------------------------------- */
+    class Semaphore
+    {
 
-
-
-/* ---------------------------- semaphore class ---------------------------- */
-
-class Semaphore {
-
-public:
-
+    public:
 #ifdef _FOUNDATION_SEMAPHORE_PORTABLE
 
-    /// constructor
-    Semaphore  () : _count(0) {}
+        /// constructor
+        Semaphore() : _count(0) {}
 
-    /// constructor
-    Semaphore  (unsigned int val) : _count(val) {}
+        /// constructor
+        Semaphore(unsigned int val) : _count(val) {}
 
-    /// destructor
-    virtual ~Semaphore () {}
+        /// destructor
+        virtual ~Semaphore() {}
 
-    /// wait
-    void                    wait (void)
-    {
-        std::unique_lock<std::mutex> lock(_mutex);
-        _cond.wait(lock, [this]{ return _count > 0; });
-        --_count;
-    }
-
-    /// trywait
-    bool                    check (void)
-    {
-        std::lock_guard<std::mutex> lock(_mutex);
-        if (_count > 0) {
+        /// wait
+        void wait(void)
+        {
+            std::unique_lock<std::mutex> lock(_mutex);
+            _cond.wait(lock, [this]
+                       { return _count > 0; });
             --_count;
-            return true;
         }
-        errno = EAGAIN;
-        return false;
-    }
 
-    /// post
-    void                    post (void)
-    {
+        /// trywait
+        bool check(void)
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            ++_count;
+            if (_count > 0)
+            {
+                --_count;
+                return true;
+            }
+            errno = EAGAIN;
+            return false;
         }
-        _cond.notify_one();
-    }
 
-private:
+        /// post
+        void post(void)
+        {
+            {
+                std::lock_guard<std::mutex> lock(_mutex);
+                ++_count;
+            }
+            _cond.notify_one();
+        }
 
-    /// void copy constructor
-    Semaphore (const Semaphore &);
+    private:
+        /// void copy constructor
+        Semaphore(const Semaphore &);
 
-    /// void copy operator
-    Semaphore &             operator= (const Semaphore &);
+        /// void copy operator
+        Semaphore &operator=(const Semaphore &);
 
-    /// mutex
-    std::mutex              _mutex;
+        /// mutex
+        std::mutex _mutex;
 
-    /// condition variable
-    std::condition_variable _cond;
+        /// condition variable
+        std::condition_variable _cond;
 
-    /// counter
-    unsigned int            _count;
+        /// counter
+        unsigned int _count;
 
 #else
 
-    /// constructor
-    Semaphore  ()
-    {
-        sem_init(&_sem, 0, 0);
-    }
+        /// constructor
+        Semaphore()
+        {
+            sem_init(&_sem, 0, 0);
+        }
 
-    /// constructor
-    Semaphore  (unsigned int val)
-    {
-        sem_init(&_sem, 0, val);
-    }
+        /// constructor
+        Semaphore(unsigned int val)
+        {
+            sem_init(&_sem, 0, val);
+        }
 
-    /// destructor
-    virtual ~Semaphore ()
-    {
-        sem_destroy(&_sem);
-    }
+        /// destructor
+        virtual ~Semaphore()
+        {
+            sem_destroy(&_sem);
+        }
 
-    /// wait
-    void                    wait (void)
-    {
-        sem_wait(&_sem);
-    }
+        /// wait
+        void wait(void)
+        {
+            sem_wait(&_sem);
+        }
 
-    /// trywait
-    bool                    check (void)
-    {
-        while (1) {
-            if (sem_trywait(&_sem) == 0) {
-                return true;
-            }
-            if (errno == EAGAIN)    {
-                return false;
+        /// trywait
+        bool check(void)
+        {
+            while (1)
+            {
+                if (sem_trywait(&_sem) == 0)
+                {
+                    return true;
+                }
+                if (errno == EAGAIN)
+                {
+                    return false;
+                }
             }
         }
-    }
 
-    /// post
-    void                    post (void)
-    {
-        sem_post(&_sem);
-    }
+        /// post
+        void post(void)
+        {
+            sem_post(&_sem);
+        }
 
-private:
+    private:
+        /// void copy constructor
+        Semaphore(const Semaphore &);
 
-    /// void copy constructor
-    Semaphore (const Semaphore &);
+        /// void copy operator
+        Semaphore &operator=(const Semaphore &);
 
-    /// void copy operator
-    Semaphore &             operator= (const Semaphore &);
-
-    /// semaphore
-    sem_t      _sem;
+        /// semaphore
+        sem_t _sem;
 
 #endif
+    };
 
-};
+    /* --------------------------------------------------------------- */
 
-/* --------------------------------------------------------------- */
-
-// end namespace 'foundation'
+    // end namespace 'foundation'
 }
 
 #endif

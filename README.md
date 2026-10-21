@@ -108,3 +108,20 @@ doesn't hold information of positions. It contains the checking
 pieces, number of checks, pinned pieces and etc. This varies
 depending on contexts and require some amount of memory
 (approx. 500 bytes per instance).
+
+## About this fork
+
+This is a modified version of libshogi by Hiroki Takada.
+Modified by 伊藤匠吾 in October 2026.
+
+Main changes:
+
+- Ported to macOS (Apple Silicon)
+- Added USI protocol and SFEN support (lib/shogi/Usi.h, Usi.cpp)
+- Added Position::attacked() and Position::lastMoveIsLegal()
+
+Other modified files (build settings and tests):
+Makefile, lib/Makefile, example/Makefile, example/dfpn/Makefile,
+regression/Makefile, regression/Test\*.cpp
+
+License: GNU LGPL v3 (see COPYING and COPYING.GPL)

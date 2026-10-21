@@ -4,7 +4,7 @@
  @file       Color.h
 
  @brief      Definition of the color (player's turn)
-  
+
  @author     Hiroki Takada (http://wwww.tsoftware.jp/)
 
  @date       2016-03-31
@@ -29,15 +29,16 @@
   You should have received a copy of the GNU Lesser General Public License
   along with libshogi. If not, see <http://www.gnu.org/licenses/>.
 
-   
+
   ----------------------------------------------------------------------------
   RELEASE NOTE :
 
    DATE          REV    REMARK
   ============= ====== =======================================================
   31st Mar 2016  0.1   Initial release
- 
- *****************************************************************************/ 
+   2nd Oct 2026  0.2   Modified by 伊藤匠吾: ported to macOS
+
+ *****************************************************************************/
 
 #ifndef _GAME_COLOR_H
 #define _GAME_COLOR_H
@@ -45,45 +46,45 @@
 #include <Common.h>
 
 // begin namespace 'game::Color'
-namespace game { namespace Color {
-
-/* ------------------------------ definitions ------------------------------ */
-
-// Players color
-using Color = int;
-enum : Color {
-
-    /// Black to play first
-#define COLOR_ALL \
-    Black, \
-    White
-    COLOR_ALL,
-
-    /// Number of colors
-    Colors,
-
-};
-
-static const Color          all[] = { COLOR_ALL };
-
-
-
-/**
-* Flip the color
-* @param c color to be fipped
-* @return  fliped color
-*/
-inline Color                flip(Color c)
+namespace game
 {
+    namespace Color
+    {
 
-    return (c ^ White);
+        /* ------------------------------ definitions ------------------------------ */
 
+        // Players color
+        using Color = int;
+        enum : Color
+        {
+
+        /// Black to play first
+#define COLOR_ALL \
+    Black,        \
+        White
+            COLOR_ALL,
+
+            /// Number of colors
+            Colors,
+        };
+
+        static const Color all[] = {COLOR_ALL};
+
+        /**
+         * Flip the color
+         * @param c color to be fipped
+         * @return  fliped color
+         */
+        inline Color flip(Color c)
+        {
+
+            return (c ^ White);
+        }
+
+        /* ------------------------------------------------------------------------- */
+
+        // end namespace 'game::Color'
+    }
 }
-
-
-/* ------------------------------------------------------------------------- */
-
-// end namespace 'game::Color'
-} }
 
 #endif
