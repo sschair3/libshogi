@@ -13,11 +13,29 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <Usi.h>
+#include <sstream>
+#include <algorithm>
+#include <map>
 
 using namespace game;
 using namespace foundation;
 using namespace Evaluation;
 using Clock = std::chrono::steady_clock;
+
+enum class Winner
+{
+    Black,
+    White,
+    Draw
+};
+
+struct GameResult
+{
+    Winner winner;
+    std::string reason; // "投了" "詰み" "反則" "時間切れ" "千日手" "最大手数" など
+    std::string moves;  // 指した手 (USI 形式)。棋譜の保存や確認に使う
+};
 
 class EngineProcess
 {
@@ -149,6 +167,22 @@ public:
         }
         return false;
     }
+    // prefix で始まる行が来るまで読み、その行を line に入れて true を返す
+    bool waitForPrefix(const std::string &prefix, std::string &line, int timeoutMs)
+    {
+        auto deadline = Clock::now() + std::chrono::milliseconds(timeoutMs);
+        while (true)
+        {
+            auto rest = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now()).count();
+            if (rest <= 0 || !readLine(line, static_cast<int>(rest)))
+            {
+                return false; // 時間切れ、またはエンジン終了
+            }
+            if (line.rfind(prefix, 0) == 0)
+                return true;
+        }
+        return false;
+    }
     void quit()
     {
         if (_pid == -1)
@@ -200,16 +234,11 @@ public:
     EngineProcess &operator=(const EngineProcess &) = delete;
 };
 
-std::string random_play()
+std::string random_play(Position p)
 {
     //------------------------------------------------------------/
     // ランダムに16手指した後のsfenを返す関数
     //-----------------------------------------------------------//
-    // 初期化
-    Shogi::initialize();
-    // 局面のインスタンスを作成
-    Position p;
-    p.init();
     // 対戦
     std::random_device rd;
     std::mt19937 engine(rd()); // メルセンヌ・ツイスタ
@@ -228,12 +257,148 @@ std::string random_play()
         // 着手
         p.move(move[random_value]);
     }
+    // play_game は「position sfen <この文字列> moves ...」の形で送るので、SFEN を返す
     return p.sfen();
+}
+
+/// 1 局の最大手数 (開始局面から数える)。これに達したら引き分け
+static const int MaxPly = 256;
+
+/// bestmove を待つときの、秒読みに足す余裕 (ミリ秒)
+static const int MarginMs = 500;
+
+/**
+ * 開始局面 startSfen から 1 局指させて、結果を返す
+ *   black: 先手のエンジン、white: 後手のエンジン (どちらも usi → usiok まで済ませておく)
+ */
+GameResult play_game(EngineProcess &black, EngineProcess &white, const std::string &startSfen, int byoyomiMs)
+{
+    GameResult result;
+    result.winner = Winner::Draw;
+
+    // 盤面は対局プログラム自身も持つ (エンジンの手が合法かを確かめるため)
+    Position p;
+    if (!p.setSFEN(startSfen))
+    {
+        result.reason = "開始局面が不正";
+        return result;
+    }
+
+    // 対局の準備: isready → readyok で、前の対局の読み残し (時間切れの後に
+    // 遅れて届いた bestmove など) を読み捨ててから、新しい対局を始める
+    for (EngineProcess *e : {&black, &white})
+    {
+        e->send("isready");
+        if (!e->waitFor("readyok", 10000))
+        {
+            result.winner = (e == &black) ? Winner::White : Winner::Black;
+            result.reason = "readyok が来ない";
+            return result;
+        }
+        e->send("usinewgame");
+    }
+
+    // エンジンに送る局面: 開始局面 + ここまでの手
+    std::string position = "position sfen " + startSfen + " moves";
+
+    // 千日手の判定用: 局面のハッシュ値ごとの出現回数
+    std::map<Zobrist::key, int> seen;
+    seen[p.hash()] = 1;
+
+    // 終局したときの処理: 両方に gameover を送り、結果を返す
+    auto finish = [&](Winner winner, const std::string &reason)
+    {
+        result.winner = winner;
+        result.reason = reason;
+        black.send(winner == Winner::Draw    ? "gameover draw"
+                   : winner == Winner::Black ? "gameover win"
+                                             : "gameover lose");
+        white.send(winner == Winner::Draw    ? "gameover draw"
+                   : winner == Winner::White ? "gameover win"
+                                             : "gameover lose");
+        return result;
+    };
+
+    for (int ply = 1;; ++ply)
+    {
+        // 1. 手番のエンジンを選ぶ (参照にすると、先手と後手で同じコードを使える)
+        bool blackToMove = (p.turn() == Color::Black);
+        EngineProcess &engine = blackToMove ? black : white;
+        Winner mover = blackToMove ? Winner::Black : Winner::White;    // 今から指す側
+        Winner opponent = blackToMove ? Winner::White : Winner::Black; // その相手
+
+        // 2. 局面を送って考えさせる
+        engine.send(position);
+        engine.send("go byoyomi " + std::to_string(byoyomiMs));
+
+        // 3. bestmove を待つ (info の行は waitForPrefix の中で読み捨てられる)
+        std::string line;
+        if (!engine.waitForPrefix("bestmove", line, byoyomiMs + MarginMs))
+        {
+            return finish(opponent, "時間切れ (またはエンジンが終了した)");
+        }
+
+        // 4. "bestmove 7g7f ponder 3c3d" から 2 つ目の単語を取り出す
+        std::istringstream is(line);
+        std::string word, usiMove;
+        is >> word >> usiMove;
+
+        if (usiMove == "resign")
+        {
+            return finish(opponent, "投了");
+        }
+        if (usiMove == "win")
+        {
+            // 入玉宣言が正しいかの判定はまだ作っていないので、引き分け扱いにしておく
+            return finish(Winner::Draw, "入玉宣言 (判定は未対応)");
+        }
+
+        // 5. 合法な手か確かめて、盤に反映する
+        //    fromUSI は合法手の一覧と照らし合わせて、見つかれば m に入れて true を返す
+        Move::Move m;
+        if (!Usi::fromUSI(p, usiMove, m))
+        {
+            return finish(opponent, "反則 (" + usiMove + ")");
+        }
+        p.move(m);
+        position += " " + usiMove;
+        result.moves += (result.moves.empty() ? "" : " ") + usiMove;
+
+        // 6. 終局の判定
+        //    相手に合法手がない = 詰み (今指した側の勝ち)
+        Array<Move::Move, Move::Max> replies;
+        p.genMove(replies);
+        if (replies.vsize() == 0)
+        {
+            return finish(mover, "詰み");
+        }
+        //    同じ局面が 4 回目 = 千日手 (連続王手の千日手はまだ区別していない)
+        if (++seen[p.hash()] >= 4)
+        {
+            return finish(Winner::Draw, "千日手");
+        }
+        if (ply >= MaxPly)
+        {
+            return finish(Winner::Draw, "最大手数");
+        }
+    }
+}
+
+/// 表示用
+static const char *winnerName(Winner w)
+{
+    return w == Winner::Black ? "先手の勝ち" : w == Winner::White ? "後手の勝ち"
+                                                                   : "引き分け";
 }
 
 int main(int argc, char *argv[])
 {
     signal(SIGPIPE, SIG_IGN);
+    // 初期化
+    Shogi::initialize();
+    // 局面のインスタンスを作成
+    Position p;
+    p.init();
     if (argc != 3)
     {
         std::cout << "エンジンパスを２つ指定してください。" << std::endl;
@@ -242,11 +407,29 @@ int main(int argc, char *argv[])
     std::string engine1_path = argv[1];
     std::string engine2_path = argv[2];
     EngineProcess engine1;
-    // EngineProcess engine2;
-    engine1.start(engine1_path);
-    // engine1.start("/private/tmp/claude-501/-Users-shogo-shogi/07402087-84d0-41b4-bb79-670bda3afa82/scratchpad/slow_engine.sh");
-    // engine2.start(engine2_path);
-    engine1.send("usi");
+    EngineProcess engine2;
+    if (!engine1.start(engine1_path) || !engine2.start(engine2_path))
+    {
+        return 1;
+    }
+    for (EngineProcess *e : {&engine1, &engine2})
+    {
+        e->send("usi");
+        if (!e->waitFor("usiok", 3000))
+        {
+            std::cerr << "usiok が来ない" << std::endl;
+            return 1;
+        }
+        e->send("setoption name Depth value 3");
+    }
+    std::string initial_sfen = random_play(p);
+    std::cout << "開始局面: " << initial_sfen << std::endl;
+
+    GameResult r = play_game(engine1, engine2, initial_sfen, 5000);
+    std::cout << winnerName(r.winner) << " (" << r.reason << ")" << std::endl;
+    std::cout << "指し手: " << r.moves << std::endl;
+
     engine1.quit();
+    engine2.quit();
     return 0;
 }
