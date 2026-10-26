@@ -17,6 +17,8 @@
 #include <sstream>
 #include <algorithm>
 #include <map>
+#include <cmath>
+#include <iomanip>
 
 using namespace game;
 using namespace foundation;
@@ -27,7 +29,8 @@ enum class Winner
 {
     Black,
     White,
-    Draw
+    Draw,
+    Invalid // 勝ち負けを決められなかった対局 (準備の失敗など)。ShogiHome の「無効対局」
 };
 
 struct GameResult
@@ -274,14 +277,14 @@ static const int MarginMs = 500;
 GameResult play_game(EngineProcess &black, EngineProcess &white, const std::string &startSfen, int byoyomiMs)
 {
     GameResult result;
-    result.winner = Winner::Draw;
+    result.winner = Winner::Invalid;
 
     // 盤面は対局プログラム自身も持つ (エンジンの手が合法かを確かめるため)
     Position p;
     if (!p.setSFEN(startSfen))
     {
         result.reason = "開始局面が不正";
-        return result;
+        return result; // 無効対局
     }
 
     // 対局の準備: isready → readyok で、前の対局の読み残し (時間切れの後に
@@ -291,9 +294,8 @@ GameResult play_game(EngineProcess &black, EngineProcess &white, const std::stri
         e->send("isready");
         if (!e->waitFor("readyok", 10000))
         {
-            result.winner = (e == &black) ? Winner::White : Winner::Black;
             result.reason = "readyok が来ない";
-            return result;
+            return result; // 対局を始められなかったので無効対局
         }
         e->send("usinewgame");
     }
@@ -310,10 +312,11 @@ GameResult play_game(EngineProcess &black, EngineProcess &white, const std::stri
     {
         result.winner = winner;
         result.reason = reason;
-        black.send(winner == Winner::Draw    ? "gameover draw"
+        bool decided = (winner == Winner::Black || winner == Winner::White);
+        black.send(!decided                  ? "gameover draw"
                    : winner == Winner::Black ? "gameover win"
                                              : "gameover lose");
-        white.send(winner == Winner::Draw    ? "gameover draw"
+        white.send(!decided                  ? "gameover draw"
                    : winner == Winner::White ? "gameover win"
                                              : "gameover lose");
         return result;
@@ -349,8 +352,8 @@ GameResult play_game(EngineProcess &black, EngineProcess &white, const std::stri
         }
         if (usiMove == "win")
         {
-            // 入玉宣言が正しいかの判定はまだ作っていないので、引き分け扱いにしておく
-            return finish(Winner::Draw, "入玉宣言 (判定は未対応)");
+            // 入玉宣言が正しいかの判定はまだ作っていないので、勝敗を決めず無効対局にする
+            return finish(Winner::Invalid, "入玉宣言 (判定は未対応)");
         }
 
         // 5. 合法な手か確かめて、盤に反映する
@@ -387,49 +390,238 @@ GameResult play_game(EngineProcess &black, EngineProcess &white, const std::stri
 /// 表示用
 static const char *winnerName(Winner w)
 {
-    return w == Winner::Black ? "先手の勝ち" : w == Winner::White ? "後手の勝ち"
-                                                                   : "引き分け";
+    return w == Winner::Black   ? "先手の勝ち"
+           : w == Winner::White ? "後手の勝ち"
+           : w == Winner::Draw  ? "引き分け"
+                                : "無効";
 }
 
-int main(int argc, char *argv[])
+/* ----------------------- 連続対局の集計 (ShogiHome と同じ) ----------------------- */
+
+/// エンジン 1 つ分の成績
+struct PlayerResults
 {
+    std::string name; // usi で受け取った "id name"
+    int win = 0;      // 勝ち数
+    int winBlack = 0; // そのうち先手で勝った数
+    int winWhite = 0; // そのうち後手で勝った数
+};
+
+/// 連続対局全体の成績
+struct GameResults
+{
+    PlayerResults player1; // 1 つ目に指定したエンジン
+    PlayerResults player2; // 2 つ目に指定したエンジン
+    int draw = 0;          // 引き分け
+    int invalid = 0;       // 無効対局
+    int total = 0;         // 全対局数
+};
+
+/// 1 局の結果を足す (player1IsBlack: その対局で player1 が先手だったか)
+static void addResult(GameResults &results, const GameResult &r, bool player1IsBlack)
+{
+    switch (r.winner)
+    {
+    case Winner::Black:
+    case Winner::White:
+    {
+        bool player1Won = (r.winner == Winner::Black) == player1IsBlack;
+        PlayerResults &winner = player1Won ? results.player1 : results.player2;
+        winner.win++;
+        if (r.winner == Winner::Black)
+            winner.winBlack++;
+        else
+            winner.winWhite++;
+        break;
+    }
+    case Winner::Draw:
+        results.draw++;
+        break;
+    case Winner::Invalid:
+        results.invalid++;
+        break;
+    }
+    results.total++;
+}
+
+/// 勝率からレーティング差を求める (勝率 0.5 なら 0、0.64 なら約 +100)
+static double eloFromWinRate(double winRate)
+{
+    return 400.0 * std::log10(winRate / (1.0 - winRate));
+}
+
+/// JavaScript の toFixed と同じ表示 (計算できない値は NaN、無限大は Infinity と出す)
+static std::string toFixed(double v, int digits)
+{
+    if (std::isnan(v))
+        return "NaN";
+    if (std::isinf(v))
+        return v > 0 ? "Infinity" : "-Infinity";
+    std::ostringstream os;
+    os << std::fixed << std::setprecision(digits) << v;
+    return os.str();
+}
+
+/// ShogiHome の「連続対局終了」と同じ形式で結果を表示する
+static void printSummary(const GameResults &results)
+{
+    const double Z95 = 1.96; // 95% の範囲に入る標準正規分布の値
+    const double Z99 = 2.58; // 99%
+
+    // 引き分けと無効対局は除いて、勝ち負けがついた対局だけで計算する
+    int n = results.player1.win + results.player2.win;
+    int wins = std::max(results.player1.win, results.player2.win); // 勝ち越した側の勝ち数
+    double winRate = static_cast<double>(wins) / n;
+
+    // 勝率の 95% 信頼区間の幅と、それをレーティングに直したもの
+    double winRateCI = Z95 * std::sqrt(winRate * (1.0 - winRate) / n);
+    double rating = eloFromWinRate(winRate);
+    double ratingLower = eloFromWinRate(winRate - winRateCI);
+    double ratingUpper = eloFromWinRate(winRate + winRateCI);
+
+    // 二項検定 (正規分布で近似): 実力が同じ (勝率 0.5) と仮定したとき、
+    // player1 の勝ち数が期待値 n/2 から標準偏差の何倍ずれているか
+    double z = std::fabs(results.player1.win - n * 0.5) / std::sqrt(0.5 * 0.5 * n);
+
+    auto player = [](const PlayerResults &pr)
+    {
+        std::cout << "- " << pr.name << "\n"
+                  << "  - 勝ち数: " << pr.win << "\n"
+                  << "  - 勝ち数(先手): " << pr.winBlack << "\n"
+                  << "  - 勝ち数(後手): " << pr.winWhite << "\n";
+    };
+
+    std::cout << "\n連続対局終了\n\n";
+    player(results.player1);
+    player(results.player2);
+    std::cout << "- 引き分け: " << results.draw << "\n"
+              << "- 有効対局数: " << results.total - results.invalid << "\n"
+              << "- 無効対局数: " << results.invalid << "\n"
+              << "- レーティング差 (引き分け無効)\n"
+              << "  - " << toFixed(rating, 2) << "\n"
+              << "  - 95% CI: [" << toFixed(ratingLower, 1) << ", " << toFixed(ratingUpper, 1) << "]\n"
+              << "- 二項検定\n"
+              << "  - np > 5: " << (n > 10 ? "True" : "False") << "\n" // n × 0.5 > 5 と同じ
+              << "  - Z値: " << toFixed(z, 2) << "\n"
+              << "  - 有意水準5%: " << (z > Z95 ? "True" : "False") << "\n"
+              << "  - 有意水準1%: " << (z > Z99 ? "True" : "False") << std::endl;
+}
+
+/// usi を送って usiok まで読み、途中の "id name ..." からエンジン名を取り出す
+static bool usiHandshake(EngineProcess &engine, std::string &name, int timeoutMs)
+{
+    engine.send("usi");
+    std::string line;
+    while (engine.readLine(line, timeoutMs))
+    {
+        if (line.rfind("id name ", 0) == 0)
+        {
+            name = line.substr(8); // "id name " の 8 文字の後ろ
+        }
+        if (line == "usiok")
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// 連続対局の組数 (1 組 = 同じ開始局面で先後を入れ替えた 2 局)
+static const int GamePairs = 150;
+
+/// 1 手の秒読み (ミリ秒)
+static const int ByoyomiMs = 5000;
+
+int main()
+{
+    int depth_in;
+    std::string engine1_path, engine2_path;
+    std::cout << "エンジンパスを２つ指定してください。" << std::endl;
+    std::cin >> engine1_path >> engine2_path;
+    if (engine1_path == "" || engine2_path == "")
+    {
+        std::cout << "プログラムを終了します。" << std::endl;
+        return 0;
+    }
+
+    std::cout << "探索の深さを入力してください。" << std::endl;
+    std::cin >> depth_in;
+    std::string depth = std::to_string(depth_in);
     signal(SIGPIPE, SIG_IGN);
     // 初期化
     Shogi::initialize();
     // 局面のインスタンスを作成
     Position p;
     p.init();
-    if (argc != 3)
-    {
-        std::cout << "エンジンパスを２つ指定してください。" << std::endl;
-        return 0;
-    }
-    std::string engine1_path = argv[1];
-    std::string engine2_path = argv[2];
     EngineProcess engine1;
     EngineProcess engine2;
     if (!engine1.start(engine1_path) || !engine2.start(engine2_path))
     {
         return 1;
     }
-    for (EngineProcess *e : {&engine1, &engine2})
+
+    GameResults results;
+    for (auto pair : {std::make_pair(&engine1, &results.player1), std::make_pair(&engine2, &results.player2)})
     {
-        e->send("usi");
-        if (!e->waitFor("usiok", 3000))
+        if (!usiHandshake(*pair.first, pair.second->name, 3000))
         {
             std::cerr << "usiok が来ない" << std::endl;
             return 1;
         }
-        e->send("setoption name Depth value 3");
+        pair.first->send("setoption name Depth value " + depth);
+        pair.first->send("setoption name DepthLimit value " + depth); // やねうら王用
+        pair.first->send("setoption name EvalDir value /Users/shogo/shogi/libshogi/my_program/yaneuraou-hao/eval");
     }
-    std::string initial_sfen = random_play(p);
-    std::cout << "開始局面: " << initial_sfen << std::endl;
 
-    GameResult r = play_game(engine1, engine2, initial_sfen, 5000);
-    std::cout << winnerName(r.winner) << " (" << r.reason << ")" << std::endl;
-    std::cout << "指し手: " << r.moves << std::endl;
+    const int totalGames = GamePairs * 2;
+    for (int i = 0; i < GamePairs; i++)
+    {
+        std::string initial_sfen = random_play(p);
 
+        // 同じ開始局面で、先後を入れ替えて 2 局指す
+        for (bool player1IsBlack : {true, false})
+        {
+            EngineProcess &black = player1IsBlack ? engine1 : engine2;
+            EngineProcess &white = player1IsBlack ? engine2 : engine1;
+            const std::string &blackName = player1IsBlack ? results.player1.name : results.player2.name;
+            const std::string &whiteName = player1IsBlack ? results.player2.name : results.player1.name;
+
+            GameResult r = play_game(black, white, initial_sfen, ByoyomiMs);
+            addResult(results, r, player1IsBlack);
+
+            std::cout << "[" << results.total << "/" << totalGames << "] "
+                      << "先手 " << blackName << " vs 後手 " << whiteName << ": "
+                      << winnerName(r.winner) << " (" << r.reason << ")" << std::endl;
+        }
+    }
+
+    printSummary(results);
     engine1.quit();
     engine2.quit();
     return 0;
 }
+
+// 連続対局終了
+
+// depth = 3
+// - my_shogi_lib 2
+//   - 勝ち数: 165
+//   - 勝ち数(先手): 85
+//   - 勝ち数(後手): 80
+// - my_shogi_lib 3
+//   - 勝ち数: 129
+//   - 勝ち数(先手): 65
+//   - 勝ち数(後手): 64
+// - 引き分け: 6
+// - 有効対局数: 300
+// - 無効対局数: 0
+// - レーティング差 (引き分け無効)
+//   - 42.76
+//   - 95% CI: [3.1, 83.5]
+// - 二項検定
+//   - np > 5: True
+//   - Z値: 2.10
+//   - 有意水準5%: True
+//   - 有意水準1%: False
+
+// depth = 5

@@ -127,7 +127,7 @@ namespace search
     /// デルタ枝刈りの余裕
     /// captureGain() は駒割りの増分しか見ないので、評価関数に駒の位置などを
     /// 足したときは、その分だけこの値を大きくすること
-    static const Eval DeltaMargin = 50;
+    static const Eval DeltaMargin = 350; // 50 + 2 × (位置の点数の最大値 150)
 
     /**
      * 駒を取る手で、評価値 (駒割り) がいくら増えるか
