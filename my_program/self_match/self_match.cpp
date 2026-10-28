@@ -375,7 +375,7 @@ int main()
         }
         pair.first->send("setoption name Depth value " + depth);
         pair.first->send("setoption name DepthLimit value " + depth); // やねうら王用
-        pair.first->send("setoption name EvalDir value /Users/shogo/shogi/libshogi/my_program/yaneuraou-hao/eval");
+        // pair.first->send("setoption name EvalDir value /Users/shogo/shogi/libshogi/my_program/yaneuraou-hao/eval");
     }
 
     const int totalGames = GamePairs * 2;

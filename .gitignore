@@ -1,20 +1,26 @@
 *.swp
 *.o
 *.so.0
-regression/lesserpyon/
-regression/movebench
-regression/testcapt
-regression/testcheck
-regression/testeffect
-regression/testfast
-regression/testgetout
-regression/testhash
-regression/testmove
-regression/testofst
-regression/testoute
-regression/testpin
-regression/testundo
-regression/testvalue
-tags
+# regression/lesserpyon/
+# regression/movebench
+# regression/testcapt
+# regression/testcheck
+# regression/testeffect
+# regression/testfast
+# regression/testgetout
+# regression/testhash
+# regression/testmove
+# regression/testofst
+# regression/testoute
+# regression/testpin
+# regression/testundo
+# regression/testvalue
+# tags
 .DS_Store
 lib/libshogi.0.dylib
+my_program/engine1/engine
+my_program/engine2/engine2
+my_program/engine3/engine3
+my_program/engine4/engine4
+my_program/NAGISA_V3.1-release/
+my_program/yaneuraou-hao

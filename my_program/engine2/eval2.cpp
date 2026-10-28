@@ -29,7 +29,7 @@ namespace evaluation
      *   18 行目   : 手番のボーナス
      * GUI から起動すると作業ディレクトリが決まらないので、絶対パスで書く。
      */
-    static const char *const PSTFile = "/Users/shogo/shogi/learn/pst2.txt";
+    static const char *const PSTFile = "/Volumes/SSD/shogi/learn/pst2.txt";
 
     /// 盤上の駒: [駒の種類][マス番号] (先手の駒の値。後手は 80 - sq を引く)
     static Eval PST[16][81];

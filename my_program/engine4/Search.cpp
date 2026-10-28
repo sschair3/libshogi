@@ -52,6 +52,8 @@ namespace search
     /// (将来、別スレッドの stop で止めるなら std::atomic<bool> にする)
     static bool _stopped = false;
 
+    static Eval _eval = 0; // 今の局面の評価値 (先手から見た値、手番のボーナスは含めない)
+
     /**
      * 時間切れかどうかを確認する (CheckInterval + 1 ノードごとに時刻を見る)
      */
@@ -355,6 +357,9 @@ namespace search
         }
         bestValue = alpha;
     }
+
+    Eval moveDelta(Eval eval, Move::Move &best) {};
+    Eval turnBonus() {};
 
     Result think(Position &p, int maxDepth, double timeLimit,
                  Evaluator evaluator,
