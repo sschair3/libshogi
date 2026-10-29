@@ -17,9 +17,12 @@
  */
 
 #include <chrono>
+#include <cstdlib>
+#include <iostream>
 #include <vector>
 #include <Array.h>
 #include "Search.h"
+#include "eval.h"
 
 using namespace game;
 using namespace foundation;
@@ -54,6 +57,33 @@ namespace search
 
     static Eval _eval = 0; // 今の局面の評価値 (先手から見た値、手番のボーナスは含めない)
 
+    /// 手を戻すときに必要な情報
+    struct Undo
+    {
+        Move::Move back; // p.move() が返した値 (p.undo() に渡す。取った駒が入っている)
+        Eval delta;      // その手で _eval がいくつ増えたか
+    };
+
+    /**
+     * 手を指して、評価値 _eval も差分で更新する
+     * 探索中の p.move() はすべてこれを通す (_eval を書き換えるのはここと undoMove だけ)
+     */
+    static Undo doMove(Position &p, Move::Move m)
+    {
+        Undo u;
+        u.delta = evaluation::moveDelta(p, m); // 指す「前」に計算する
+        u.back = p.move(m);
+        _eval += u.delta;
+        return u;
+    }
+
+    /// doMove() で指した手を戻し、_eval も元に戻す
+    static void undoMove(Position &p, const Undo &u)
+    {
+        p.undo(u.back);
+        _eval -= u.delta;
+    }
+
     /**
      * 時間切れかどうかを確認する (CheckInterval + 1 ノードごとに時刻を見る)
      */
@@ -71,7 +101,21 @@ namespace search
      */
     static Eval evaluate(Position &p)
     {
-        Eval e = _evaluator(p);
+        // 差分で更新してきた値に、手番のボーナスを足すだけ (盤を全部見なくてよい)
+        Eval e = _eval + evaluation::turnBonus(p.turn());
+
+#ifdef CHECK_EVAL
+        // 確認用: 全部計算し直した値と比べ、違えば止める
+        //   CFLAGS=-DCHECK_EVAL make のようにして有効にする (make clean してから)
+        Eval full = _evaluator(p);
+        if (e != full)
+        {
+            std::cerr << "差分計算の評価値が違います: 差分 " << e << " / 全計算 " << full
+                      << "  " << p.sfen() << std::endl;
+            std::abort();
+        }
+#endif
+
         return (p.turn() == Color::Black) ? e : -e;
     }
 
@@ -228,12 +272,12 @@ namespace search
 
         for (auto move : m)
         {
-            auto back = p.move(move);
+            Undo u = doMove(p, move);
 
             // genCapt() が生成する非合法手 (自玉を取られる手) は読まずに捨てる
             if (!inCheck && !p.lastMoveIsLegal())
             {
-                p.undo(back);
+                undoMove(p, u);
                 continue;
             }
 
@@ -243,16 +287,16 @@ namespace search
             {
                 // (p.move() の後なので、取った駒・動かした駒は back から求めずに
                 //  手を戻してから計算する)
-                p.undo(back);
+                undoMove(p, u);
                 if (standPat + captureGain(p, move) + DeltaMargin <= alpha)
                 {
                     continue;
                 }
-                back = p.move(move);
+                u = doMove(p, move);
             }
 
             Eval value = -quiescence(p, -beta, -alpha, ply + 1, qply + 1);
-            p.undo(back); // 時間切れで戻ってきたときも、必ず先に局面を戻す
+            undoMove(p, u); // 時間切れで戻ってきたときも、必ず先に局面を戻す
 
             if (_stopped)
             {
@@ -303,11 +347,11 @@ namespace search
         orderMoves(p, m);
         for (auto move : m)
         {
-            auto back = p.move(move);
+            Undo u = doMove(p, move);
             // 相手から見た評価値の符号を反転すると自分から見た評価値になる。
             // 窓 [alpha, beta] も、相手から見ると [-beta, -alpha] になる。
             Eval value = -negamax(p, -beta, -alpha, depth - 1, ply + 1);
-            p.undo(back); // 時間切れで戻ってきたときも、必ず先に局面を戻す
+            undoMove(p, u); // 時間切れで戻ってきたときも、必ず先に局面を戻す
             // 時間切れなら、この局面の結果は信用できないのでそのまま戻る
             if (_stopped)
             {
@@ -339,9 +383,9 @@ namespace search
         best = m[0];
         for (auto move : m)
         {
-            auto back = p.move(move);
+            Undo u = doMove(p, move);
             Eval v = -negamax(p, -beta, -alpha, depth - 1, 1);
-            p.undo(back);
+            undoMove(p, u);
 
             // 時間切れ: この深さの結果は呼び出し側で捨てる
             if (_stopped)
@@ -358,9 +402,6 @@ namespace search
         bestValue = alpha;
     }
 
-    Eval moveDelta(Eval eval, Move::Move &best) {};
-    Eval turnBonus() {};
-
     Result think(Position &p, int maxDepth, double timeLimit,
                  Evaluator evaluator,
                  const std::function<void(const Result &)> &onIteration)
@@ -369,14 +410,17 @@ namespace search
         _evaluator = evaluator;
         auto start = Clock::now();
 
+        // 差分計算の出発点: ルート局面だけは全部計算する (手番のボーナスは含めない)
+        _eval = _evaluator(p) - evaluation::turnBonus(p.turn());
+
         MoveList m;
         p.genMove(m);
         if (m.vsize() == 0)
         {
-            return result; // 指せる手がない (詰み)
+            return result;
         }
         result.hasMove = true;
-        result.best = m[0]; // 深さ 1 すら読み切れなくても、合法手は必ず返せる
+        result.best = m[0];
         _nodes = 0;
 
         // 時間制限の準備 (timeLimit <= 0 なら時間制限なし)

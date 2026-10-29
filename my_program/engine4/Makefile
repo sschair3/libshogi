@@ -4,6 +4,7 @@ FILE_NAME := engine4
 #   make                    -> engine  (Search.cpp, 評価は駒割りだけ)
 #   make FILE_NAME=engine2  -> engine2 (Search2.cpp + eval2.cpp, pst2.txt を読む)
 #   make FILE_NAME=engine3  -> engine3 (Search2.cpp + eval3.cpp, pst3.txt を読む)
+
 HEADERS   = Search.h eval.h
 OBJS      = Search.o eval.o
 

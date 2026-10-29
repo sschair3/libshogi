@@ -15,6 +15,10 @@
 
 #include <Shogi.h>
 
+using namespace game;
+using namespace foundation;
+// using namespace ;
+
 namespace evaluation
 {
 
@@ -23,6 +27,9 @@ namespace evaluation
 
     /// 駒の位置の評価 (先手から見た値)
     game::Evaluation::Eval locationEvaluation(const game::Position &p);
+
+    game::Evaluation::Eval moveDelta(const Position &p, Move::Move m);
+    game::Evaluation::Eval turnBonus(Color::Color turn);
 
     /// 評価関数: 駒割り + 駒の位置の評価 (先手から見た値)
     game::Evaluation::Eval evaluate(game::Position &p);

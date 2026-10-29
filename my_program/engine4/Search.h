@@ -26,12 +26,12 @@ namespace search
     /// 探索結果
     struct Result
     {
-        bool hasMove = false;                       ///< 指せる手があったか
-        game::Move::Move best = game::Move::None;   ///< 最善手
-        game::Evaluation::Eval value = 0;           ///< 評価値 (先手から見た値)
-        int depth = 0;                              ///< 読み切った深さ
-        uint64_t nodes = 0;                         ///< 探索したノード数
-        double seconds = 0.0;                       ///< 経過時間 (秒)
+        bool hasMove = false;                     ///< 指せる手があったか
+        game::Move::Move best = game::Move::None; ///< 最善手
+        game::Evaluation::Eval value = 0;         ///< 評価値 (先手から見た値)
+        int depth = 0;                            ///< 読み切った深さ
+        uint64_t nodes = 0;                       ///< 探索したノード数
+        double seconds = 0.0;                     ///< 経過時間 (秒)
     };
 
     /**

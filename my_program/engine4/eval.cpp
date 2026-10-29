@@ -93,6 +93,61 @@ namespace evaluation
         return value;
     }
 
+    /**
+     * 手 m を指したときの評価値の増減 (先手から見た値、手番のボーナスは含まない)
+     * p.move(m) の「前」に呼ぶこと (動かす駒・取る駒を盤から読むため)
+     *
+     *   評価値 (手番のボーナスを除く) を E とすると
+     *     E(m を指した後) = E(m を指す前) + moveDelta(p, m)
+     */
+    Eval moveDelta(const Position &p, Move::Move m)
+    {
+        bool black = (p.turn() == Color::Black);
+        int s = black ? 1 : -1; // 指す側の符号 (先手の得なら +、後手の得なら -)
+
+        // PST は先手の駒の表なので、後手の駒は盤を 180 度回したマスで引く
+        //   mine  : 指す側の駒を引くときのマス
+        //   theirs: 相手の駒を引くときのマス
+        auto mine = [black](Square::Square sq) { return black ? sq : 80 - sq; };
+        auto theirs = [black](Square::Square sq) { return black ? 80 - sq : sq; };
+
+        Square::Square to = Move::to(m);
+        Eval d; // 指す側から見た増減
+
+        if (m & Move::Drop)
+        {
+            // 駒を打つ手: 持ち駒が 1 枚減り、盤上に駒が 1 枚増える
+            // 打つ手では、移動元の場所に駒の種類が入っている (型は Square なので Piece に直す)
+            Piece::Piece kind = static_cast<Piece::Piece>(Move::from(m));
+            d = PST[kind][mine(to)] - Hand[kind];
+        }
+        else
+        {
+            // 駒を動かす手: 移動元の点数がなくなり、移動先の点数が加わる
+            Square::Square from = Move::from(m);
+            Piece::Piece kind = p.square(from) & Piece::Neutral; // 先後の区別を外した種類
+            Piece::Piece after = (m & Move::Promote) ? (kind | Piece::Promoted) : kind;
+            d = PST[after][mine(to)] - PST[kind][mine(from)];
+
+            // 駒を取る手: 相手の駒が盤から消え、その駒 (成駒なら元の駒) が持ち駒に加わる
+            Piece::Piece captured = p.square(to);
+            if (captured != Piece::EMP)
+            {
+                Piece::Piece ckind = captured & Piece::Neutral;
+                d += PST[ckind][theirs(to)];       // 相手の点数が減る = 指す側の得
+                d += Hand[ckind & Piece::Mask];    // と金 → 歩 のように元の駒に戻る
+            }
+        }
+
+        return s * d;
+    }
+
+    /// 手番のボーナス (先手から見た値): 先手番なら +Turn、後手番なら -Turn
+    Eval turnBonus(Color::Color turn)
+    {
+        return (turn == Color::Black) ? Turn : -Turn;
+    }
+
     Eval evaluate(Position &p)
     {
         Eval value = locationEvaluation(p);
@@ -104,7 +159,7 @@ namespace evaluation
         }
 
         // 手番
-        value += p.turn() == Color::Black ? Turn : -Turn;
+        value += turnBonus(p.turn());
 
         return value;
     }

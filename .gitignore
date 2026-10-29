@@ -22,5 +22,8 @@ my_program/engine1/engine
 my_program/engine2/engine2
 my_program/engine3/engine3
 my_program/engine4/engine4
+my_program/engine4/test
+my_program/engine4/test.cpp
 my_program/NAGISA_V3.1-release/
 my_program/yaneuraou-hao
+my_program/bench_nps/bench
