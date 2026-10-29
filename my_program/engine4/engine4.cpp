@@ -26,7 +26,7 @@ using namespace game;
 class Engine : public USIConnection
 {
 public:
-    Engine() : USIConnection("my_shogi_lib 3", "伊藤匠吾") {}
+    Engine() : USIConnection("my_shogi_lib 4", "伊藤匠吾") {}
 
 protected:
     /// isready: ライブラリの初期化後に呼ばれる
