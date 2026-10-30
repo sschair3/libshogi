@@ -12,3 +12,4 @@ my_program/engine4/test.cpp
 my_program/NAGISA_V3.1-release/
 my_program/yaneuraou-hao/
 my_program/bench_nps/bench
+*.txt

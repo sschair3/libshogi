@@ -331,15 +331,11 @@ static bool usiHandshake(EngineProcess &engine, std::string &name, int timeoutMs
     return false;
 }
 
-/// 連続対局の組数 (1 組 = 同じ開始局面で先後を入れ替えた 2 局)
-static const int GamePairs = 150;
-
-/// 1 手の秒読み (ミリ秒)
-static const int ByoyomiMs = 5000;
+/// 自作エンジンの Depth の上限 (engine1〜4 の options() の max と同じ)
+static const int MaxDepth = 64;
 
 int main()
 {
-    int depth_in;
     std::string engine1_path, engine2_path;
     std::cout << "エンジンパスを２つ指定してください。" << std::endl;
     std::cin >> engine1_path >> engine2_path;
@@ -349,9 +345,29 @@ int main()
         return 0;
     }
 
-    std::cout << "探索の深さを入力してください。" << std::endl;
+    // 深さと時間の両方で制限できる。先に来たほうで探索が止まる
+    //   深さ 0         : 深さで制限しない (時間だけで止める)
+    //   秒読み (ミリ秒): 1 手あたりの持ち時間。エンジンはこの時間内に指す
+    int depth_in = 0, byoyomiMs = 0, gamePairs = 0;
+    std::cout << "探索の深さを入力してください (0 なら深さで制限しない)。" << std::endl;
     std::cin >> depth_in;
-    std::string depth = std::to_string(depth_in);
+    std::cout << "1 手の秒読みをミリ秒で入力してください (例: 1000)。" << std::endl;
+    std::cin >> byoyomiMs;
+    std::cout << "対局の組数を入力してください (1 組 = 先後を入れ替えた 2 局)。" << std::endl;
+    std::cin >> gamePairs;
+    if (!std::cin || depth_in < 0 || byoyomiMs <= 0 || gamePairs <= 0)
+    {
+        std::cout << "入力が正しくありません。プログラムを終了します。" << std::endl;
+        return 0;
+    }
+
+    // 深さ 0 (制限しない) のとき:
+    //   自作エンジンの Depth は 0 を受け付けないので上限の 64 を送る
+    //   やねうら王の DepthLimit は 0 が「制限なし」の意味
+    std::string depth = std::to_string(depth_in == 0 ? MaxDepth : depth_in);
+    std::string depthLimit = std::to_string(depth_in);
+    std::cout << "深さ " << (depth_in == 0 ? "制限なし" : depth)
+              << " / 秒読み " << byoyomiMs << " ミリ秒 / " << gamePairs * 2 << " 局" << std::endl;
     signal(SIGPIPE, SIG_IGN);
     // 初期化
     Shogi::initialize();
@@ -374,12 +390,12 @@ int main()
             return 1;
         }
         pair.first->send("setoption name Depth value " + depth);
-        pair.first->send("setoption name DepthLimit value " + depth); // やねうら王用
+        pair.first->send("setoption name DepthLimit value " + depthLimit); // やねうら王用
         // pair.first->send("setoption name EvalDir value /Users/shogo/shogi/libshogi/my_program/yaneuraou-hao/eval");
     }
 
-    const int totalGames = GamePairs * 2;
-    for (int i = 0; i < GamePairs; i++)
+    const int totalGames = gamePairs * 2;
+    for (int i = 0; i < gamePairs; i++)
     {
         std::string initial_sfen = random_play(p);
 
@@ -391,7 +407,7 @@ int main()
             const std::string &blackName = player1IsBlack ? results.player1.name : results.player2.name;
             const std::string &whiteName = player1IsBlack ? results.player2.name : results.player1.name;
 
-            GameResult r = play_game(black, white, initial_sfen, ByoyomiMs);
+            GameResult r = play_game(black, white, initial_sfen, byoyomiMs);
             addResult(results, r, player1IsBlack);
 
             std::cout << "[" << results.total << "/" << totalGames << "] "
@@ -405,28 +421,3 @@ int main()
     engine2.quit();
     return 0;
 }
-
-// 連続対局終了
-
-// depth = 3
-// - my_shogi_lib 2
-//   - 勝ち数: 165
-//   - 勝ち数(先手): 85
-//   - 勝ち数(後手): 80
-// - my_shogi_lib 3
-//   - 勝ち数: 129
-//   - 勝ち数(先手): 65
-//   - 勝ち数(後手): 64
-// - 引き分け: 6
-// - 有効対局数: 300
-// - 無効対局数: 0
-// - レーティング差 (引き分け無効)
-//   - 42.76
-//   - 95% CI: [3.1, 83.5]
-// - 二項検定
-//   - np > 5: True
-//   - Z値: 2.10
-//   - 有意水準5%: True
-//   - 有意水準1%: False
-
-// depth = 5
