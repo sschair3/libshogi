@@ -13,3 +13,6 @@ my_program/NAGISA_V3.1-release/
 my_program/yaneuraou-hao/
 my_program/bench_nps/bench
 *.txt
+my_program/engine5/engine5
+my_program/engine6/engine6
+my_program/make_quiet/quiet
