@@ -38,10 +38,11 @@ namespace search
      * 反復深化で最善手を探す
      * @param p           局面 (探索中に動かすが、終わると元に戻っている)
      * @param maxDepth    最大の探索深さ
-     * @param timeLimit   思考時間の目安 (秒)。0 以下なら時間制限なし
+     * @param timeLimit   思考時間 (秒)。この時間まで考えて止める。0 以下なら時間制限なし
      * @param evaluator   評価関数
      * @param onIteration 1 つの深さを読み切るたびに呼ばれる (info 出力用)
-     * @return 探索結果 (最後に読み切った深さの結果)
+     * @return 探索結果 (最後に読み切った深さの結果。途中で止まった深さで、
+     *         読み終わった手の中により良い手があれば、その手)
      */
     Result think(game::Position &p, int maxDepth, double timeLimit,
                  Evaluator evaluator,

@@ -1,4 +1,4 @@
-FILE_NAME := self_match
+FILE_NAME := test
 
 # エンジンごとに使うファイル
 #   make                    -> engine  (Search.cpp, 評価は駒割りだけ)

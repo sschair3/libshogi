@@ -13,15 +13,25 @@
  * 駒割りには engine1 と同じ駒の価値 (Evaluation.h の Value / Hands) を使う。
  * 学習した評価関数を使うと、ゆがんだ駒の価値で局面を選ぶことになるため。
  *
+ * 棋譜の探し方:
+ *   棋譜のフォルダの中を、下のフォルダまで全部たどって .csa ファイルを集める
+ *   (「月/日付/棋譜」でも「年/棋譜」でも、フォルダの形は問わない)。
+ *   書き出すファイルは、棋譜のファイル名の日時 (…+20260115170003.csa) から取り出した
+ *   年月ごとに分ける (2026-01.txt など)。日時が読み取れない棋譜は unknown.txt に書く。
+ *   対局ID は、書き出すファイルごとに 0 から数える。
+ *
  * 使い方 (make_quiet フォルダで):
  *   make && ./quiet [棋譜のフォルダ] [書き出し先のフォルダ]
- *   既定: ../../../2026 → ../../../learn/data_quiet  (01.txt 〜 10.txt を作る)
+ *   既定: ../../../2026 → ../../../learn/data_quiet_all
  */
 
 #include <algorithm>
+#include <cstdio>
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
@@ -63,19 +73,19 @@ static int judge(const std::string &kifu_path)
         if (lines[lines.size() - i].rfind("'summary:abnormal", 0) == 0)
             return 0;
     }
-    int toryo_line = -1;
+    size_t toryo_line = lines.size(); // 見つからなければ lines.size() のまま
     for (size_t i = 0; i < lines.size(); i++)
     {
         if (!lines[i].empty() && lines[i][0] == '%')
         {
-            toryo_line = static_cast<int>(i);
+            toryo_line = i;
             break;
         }
     }
-    if (toryo_line == -1 || lines[toryo_line] != "%TORYO")
+    if (toryo_line == lines.size() || lines[toryo_line] != "%TORYO")
         return 0;
     // %TORYO の前で最後に指した側が勝ち
-    for (int i = toryo_line - 1; i >= 0; --i)
+    for (size_t i = toryo_line; i-- > 0;)
     {
         if (!lines[i].empty() && (lines[i][0] == '+' || lines[i][0] == '-'))
             return lines[i][0] == '+' ? 1 : -1;
@@ -98,6 +108,38 @@ static std::vector<std::string> listDir(const std::string &dir)
     closedir(d);
     std::sort(names.begin(), names.end());
     return names;
+}
+
+/// dir の中の .csa ファイルを、下のフォルダも含めて全部集める (フォルダ・ファイルとも名前順)
+static void collectKifu(const std::string &dir, std::vector<std::string> &out)
+{
+    for (const auto &name : listDir(dir))
+    {
+        std::string path = dir + "/" + name;
+        struct stat st;
+        if (stat(path.c_str(), &st) != 0)
+            continue;
+        if (S_ISDIR(st.st_mode))
+            collectKifu(path, out); // フォルダなら、その中も探す
+        else if (name.size() > 4 && name.compare(name.size() - 4, 4, ".csa") == 0)
+            out.push_back(path);
+    }
+}
+
+/**
+ * 棋譜のファイル名の最後の日時から、年月 ("2026-01" の形) を取り出す
+ *   例: wdoor+floodgate-300-10F+A+B+20260115170003.csa → "2026-01"
+ * 取り出せなければ "unknown"
+ */
+static std::string yearMonth(const std::string &path)
+{
+    size_t plus = path.rfind('+');
+    if (plus == std::string::npos || path.size() < plus + 1 + 6)
+        return "unknown";
+    std::string ym = path.substr(plus + 1, 6); // YYYYMM
+    if (!std::all_of(ym.begin(), ym.end(), ::isdigit))
+        return "unknown";
+    return ym.substr(0, 4) + "-" + ym.substr(4, 2);
 }
 
 /// 1局面ぶんの特徴量を書き出す (test.cpp と同じ形式)
@@ -202,85 +244,88 @@ static Kind classify(Position &p)
 int main(int argc, char *argv[])
 {
     const std::string root = (argc >= 2) ? argv[1] : "../../../2026";
-    const std::string outDir = (argc >= 3) ? argv[2] : "../../../learn/data_quiet";
+    const std::string outDir = (argc >= 3) ? argv[2] : "../../../learn/data_quiet_all";
     mkdir(outDir.c_str(), 0755);
 
     Shogi::initialize();
-    Position::setValue(Value);   // engine1 と同じ駒の価値
+    Position::setValue(Value); // engine1 と同じ駒の価値
     Position::handsValue(Hands);
+
+    // 棋譜を全部集めて、年月ごとに分ける (std::map なので年月の順に並ぶ)
+    std::vector<std::string> files;
+    collectKifu(root, files);
+    std::map<std::string, std::vector<std::string>> byMonth;
+    for (const auto &path : files)
+        byMonth[yearMonth(path)].push_back(path);
+    std::cout << "棋譜 " << files.size() << " 個 (" << byMonth.size() << " か月分)" << std::endl;
 
     long allTotal = 0, allQuiet = 0, allCheck = 0, allTactical = 0;
 
-    for (int month = 1; month <= 10; ++month)
+    for (const auto &group : byMonth)
     {
-        char mm[3];
-        std::snprintf(mm, sizeof mm, "%02d", month);
-        std::ofstream out(outDir + "/" + mm + ".txt");
+        const std::string &ym = group.first;
+        std::ofstream out(outDir + "/" + ym + ".txt");
         if (!out)
         {
-            std::cerr << "書き出せません: " << outDir << "/" << mm << ".txt" << std::endl;
+            std::cerr << "書き出せません: " << outDir << "/" << ym << ".txt" << std::endl;
             return 1;
         }
 
         int gameId = 0;
         long total = 0, quiet = 0, check = 0, tactical = 0;
-        for (const auto &day : listDir(root + "/" + mm))
+        for (const auto &path : group.second)
         {
-            for (const auto &name : listDir(root + "/" + mm + "/" + day))
+            int result = judge(path);
+            if (result == 0)
+                continue;
+            int label = (result == 1) ? 1 : 0; // 先手から見たラベル
+
+            try
             {
-                std::string path = root + "/" + mm + "/" + day + "/" + name;
-                int result = judge(path);
-                if (result == 0)
-                    continue;
-                int label = (result == 1) ? 1 : 0; // 先手から見たラベル
+                CSAFile kifu(path);
+                Position p(kifu.summary());
 
-                try
+                // 1局ぶん溜めてから書く (途中で失敗したときに半端な対局を書かないため)
+                std::ostringstream buf;
+                long t = 0, q = 0, c = 0, a = 0;
+                int ply = 0;
+                auto visit = [&]()
                 {
-                    CSAFile kifu(path);
-                    Position p(kifu.summary());
-
-                    // 1局ぶん溜めてから書く (途中で失敗したときに半端な対局を書かないため)
-                    std::ostringstream buf;
-                    long t = 0, q = 0, c = 0, a = 0;
-                    int ply = 0;
-                    auto visit = [&]()
+                    ++t;
+                    switch (classify(p))
                     {
-                        ++t;
-                        switch (classify(p))
-                        {
-                        case Kind::Quiet:
-                            ++q;
-                            buf << gameId << ' ' << label << ' ' << ply;
-                            writeFeatures(buf, p);
-                            buf << '\n';
-                            break;
-                        case Kind::InCheck:
-                            ++c;
-                            break;
-                        case Kind::Tactical:
-                            ++a;
-                            break;
-                        }
-                    };
-                    visit();
-                    for (const auto &m : kifu)
-                    {
-                        p.move(m);
-                        ++ply;
-                        visit();
+                    case Kind::Quiet:
+                        ++q;
+                        buf << gameId << ' ' << label << ' ' << ply;
+                        writeFeatures(buf, p);
+                        buf << '\n';
+                        break;
+                    case Kind::InCheck:
+                        ++c;
+                        break;
+                    case Kind::Tactical:
+                        ++a;
+                        break;
                     }
-                    out << buf.str();
-                    total += t, quiet += q, check += c, tactical += a;
-                    ++gameId;
-                }
-                catch (...)
+                };
+                visit();
+                for (const auto &m : kifu)
                 {
-                    // 読めない棋譜は飛ばす
+                    p.move(m);
+                    ++ply;
+                    visit();
                 }
+                out << buf.str();
+                total += t, quiet += q, check += c, tactical += a;
+                ++gameId;
+            }
+            catch (...)
+            {
+                // 読めない棋譜は飛ばす
             }
         }
 
-        std::cout << mm << ".txt: 対局 " << gameId << "  局面 " << total
+        std::cout << ym << ".txt: 対局 " << gameId << "  局面 " << total
                   << "  → 落ち着いた局面 " << quiet << " (王手 " << check << ", 駒得の手あり " << tactical << ")"
                   << std::endl;
         allTotal += total, allQuiet += quiet, allCheck += check, allTactical += tactical;

@@ -16,3 +16,5 @@ my_program/bench_nps/bench
 my_program/engine5/engine5
 my_program/engine6/engine6
 my_program/make_quiet/quiet
+my_program/test
+*.bin

@@ -9,11 +9,13 @@
  * ただし外から見える Result::value と評価関数の戻り値は「先手から見た値」。
  *
  * 時間制限:
- *   - ハードリミット: 思考時間の目安 (timeLimit) を超えたら、探索の途中でも止める。
- *     途中で止まった深さの結果は信用できないので捨て、最後に読み切った深さの
- *     最善手を返す。
- *   - ソフトリミット: 経過時間が目安の SoftLimitRatio 倍を超えていたら、
- *     次の深さを始めない (次の深さは今までの数倍かかり、どうせ途中で止まるため)。
+ *   思考時間 (timeLimit) いっぱいまで反復深化を続け、時間になったら探索の途中でも止める。
+ *   深さが 1 つ増えると時間が 5〜10 倍に跳ねるので、「深さを読み切ったら止める」方式では
+ *   思考時間を細かく使えない。そこで、途中で止まった深さの結果も、次のように使う。
+ *     - ルートでは前の深さの最善手を最初に読むので、その手を読み終わっていれば、
+ *       そこまでに読み終わった手の中で一番よい手を返す (前の最善手より良い手が
+ *       見つかっていればその手、なければ前の最善手)
+ *     - 最初の手すら読み終わっていなければ、前の深さの結果をそのまま返す
  */
 
 #include <chrono>
@@ -41,9 +43,6 @@ namespace search
 
     /// 時間を確認する間隔 (ノード数。2 のべき乗 - 1 にしてビット演算で判定する)
     static const uint64_t CheckInterval = 4096 - 1;
-
-    /// 経過時間がこの割合を超えていたら次の深さを始めない
-    static const double SoftLimitRatio = 0.3;
 
     /// 時間制限があるか
     static bool _useTime = false;
@@ -374,25 +373,28 @@ namespace search
     /**
      * ルート局面を深さ depth で探索し、最善手と評価値 (手番側から見た値) を返す
      */
-    static void searchRoot(Position &p, MoveList &m, int depth,
-                           Move::Move &best, Eval &bestValue)
+    static int searchRoot(Position &p, MoveList &m, int depth,
+                          Move::Move &best, Eval &bestValue)
     {
         Eval alpha = -Infinity - 1;
         Eval beta = Infinity + 1;
 
         best = m[0];
+        int done = 0; // 読み終わった手の数
         for (auto move : m)
         {
             Undo u = doMove(p, move);
             Eval v = -negamax(p, -beta, -alpha, depth - 1, 1);
             undoMove(p, u);
 
-            // 時間切れ: この深さの結果は呼び出し側で捨てる
+            // 時間切れ: 読みかけの手の値は信用できないので使わない。
+            // best と bestValue は、読み終わった手の中で一番よい手のまま返す
             if (_stopped)
             {
-                return;
+                break;
             }
 
+            ++done;
             if (v > alpha)
             {
                 alpha = v;
@@ -400,6 +402,7 @@ namespace search
             }
         }
         bestValue = alpha;
+        return done;
     }
 
     Result think(Position &p, int maxDepth, double timeLimit,
@@ -441,12 +444,22 @@ namespace search
 
             Move::Move best;
             Eval value; // 手番側から見た値
-            searchRoot(p, m, depth, best, value);
+            int done = searchRoot(p, m, depth, best, value);
 
-            // 時間切れで途中までしか読めなかった深さの結果は捨てる
-            // (前の深さで読み切った result.best をそのまま使う)
+            // 時間切れで、この深さを途中までしか読めなかったとき
             if (_stopped)
             {
+                // 最初の手 (前の深さの最善手) を読み終わっていれば、読み終わった手の中で
+                // 一番よい手を使う。前の最善手より良い手が見つかっていれば、それに変わる。
+                // 最初の手すら読み終わっていなければ、前の深さの結果をそのまま使う
+                if (done > 0 && best != result.best)
+                {
+                    result.best = best;
+                    result.value = sign * value;
+                    result.nodes = _nodes;
+                    result.seconds = std::chrono::duration<double>(Clock::now() - start).count();
+                    onIteration(result); // 深さは前の深さのまま、読み筋だけ変わる
+                }
                 break;
             }
 
@@ -465,12 +478,7 @@ namespace search
             {
                 break;
             }
-            // ソフトリミット: 次の深さは今までの数倍かかるので、
-            // 残り時間で読み切れそうにないなら始めない
-            if (_useTime && sec > timeLimit * SoftLimitRatio)
-            {
-                break;
-            }
+            // 次の深さは、読み終わらなくても途中の結果を使えるので、時間がある限り始める
         }
         return result;
     }

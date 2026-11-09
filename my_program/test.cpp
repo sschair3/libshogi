@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <sstream>
 #include <dirent.h>
+#include <sys/stat.h>
 
 #include <Shogi.h>
 #include <CSAFile.h>
@@ -111,6 +112,22 @@ std::vector<std::string> listDir(const std::string &dir)
     return names;
 }
 
+// dir の中の .csa ファイルを、下のフォルダも含めて全部集める (名前順)
+void collectKifu(const std::string &dir, std::vector<std::string> &out)
+{
+    for (const auto &name : listDir(dir))
+    {
+        std::string path = dir + "/" + name;
+        struct stat st;
+        if (stat(path.c_str(), &st) != 0)
+            continue;
+        if (S_ISDIR(st.st_mode))
+            collectKifu(path, out); // フォルダなら、その中も探す
+        else if (path.size() > 4 && path.compare(path.size() - 4, 4, ".csa") == 0)
+            out.push_back(path); // .csa ファイルなら集める
+    }
+}
+
 // 1局面ぶんの特徴量を書き出す (先手から見た向き)
 void writeFeatures(std::ostream &out, const Position &p)
 {
@@ -144,13 +161,14 @@ int main()
 {
     Shogi::initialize();
 
-    const std::string root = "../../2026/10";
-    std::ofstream out("10.txt");
+    const std::string root = "../../2026/pastkifu";
+    std::ofstream out("pastkifu.txt");
 
     int gameId = 0;
     int skipped = 0;
     long positions = 0;
-
+    std::vector<std::string> files;
+    collectKifu(root, files);
     for (const auto &day : listDir(root))
     {
         for (const auto &name : listDir(root + "/" + day))
@@ -204,5 +222,6 @@ int main()
 
     std::cerr << "対局数: " << gameId << "  局面数: " << positions
               << "  捨てた棋譜: " << skipped << std::endl;
+    std::system("test：処理が正常に終了しました。\a");
     return 0;
 }

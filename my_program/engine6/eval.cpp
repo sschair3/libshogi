@@ -31,7 +31,7 @@ namespace evaluation
      *   18 行目   : 手番のボーナス
      * GUI から起動すると作業ディレクトリが決まらないので、絶対パスで書く。
      */
-    static const char *const PSTFile = "/Volumes/SSD/shogi/learn/pst_kp_quiet.txt";
+    static const char *const PSTFile = "/Users/shogo/ShogiEngine/learn/pst_kp_quiet.txt";
 
     /**
      * KP の表のファイル (learn/train_kp.py の save_kp() が書き出す形式)
@@ -43,7 +43,7 @@ namespace evaluation
      *     t: 玉以外の駒の種類 (歩〜金 = 0〜6、と〜龍 = 7〜12)
      *     値は「玉の持ち主の得」(先手玉の分は足し、後手玉の分は引く)
      */
-    static const char *const KPFile = "/Volumes/SSD/shogi/learn/kp_quiet.bin";
+    static const char *const KPFile = "/Users/shogo/ShogiEngine/learn/kp_quiet.bin";
 
     /// 盤上の駒: [駒の種類][マス番号] (先手の駒の値。後手は 80 - sq を引く)
     static Eval PST[16][81];
@@ -149,8 +149,10 @@ namespace evaluation
         // PST は先手の駒の表なので、後手の駒は盤を 180 度回したマスで引く
         //   mine  : 指す側の駒を引くときのマス
         //   theirs: 相手の駒を引くときのマス
-        auto mine = [black](Square::Square sq) { return black ? sq : 80 - sq; };
-        auto theirs = [black](Square::Square sq) { return black ? 80 - sq : sq; };
+        auto mine = [black](Square::Square sq)
+        { return black ? sq : 80 - sq; };
+        auto theirs = [black](Square::Square sq)
+        { return black ? 80 - sq : sq; };
 
         Square::Square to = Move::to(m);
         Eval d; // 指す側から見た増減
@@ -175,8 +177,8 @@ namespace evaluation
             if (captured != Piece::EMP)
             {
                 Piece::Piece ckind = captured & Piece::Neutral;
-                d += PST[ckind][theirs(to)];       // 相手の点数が減る = 指す側の得
-                d += Hand[ckind & Piece::Mask];    // と金 → 歩 のように元の駒に戻る
+                d += PST[ckind][theirs(to)];    // 相手の点数が減る = 指す側の得
+                d += Hand[ckind & Piece::Mask]; // と金 → 歩 のように元の駒に戻る
             }
         }
 
